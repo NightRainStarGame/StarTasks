@@ -106,15 +106,17 @@ export function CoursesPage() {
           <span className="font-mono text-[10px] text-text-dim">{courses.length} 门课程</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {!IS_MOBILE && (
-            <button
-              onClick={() => setXlsOpen(true)}
-              className="btn-ghost"
-              title="从教务系统导出的 Excel 导入课表（先选你的学校）"
-            >
-              <FileSpreadsheet size={14} /> XLS 导入
-            </button>
-          )}
+          {/* v1.2.18：上一版我用 `!IS_MOBILE &&` 把这个按钮藏在手机外面，理由是
+              「移动端没有原生文件选择框」—— 但那是把功能整个砍掉，而不是解决它。
+              现在向导在手机上走 <input type="file"> + 字节解析（xls:parseBuffer），
+              手机和桌面共用同一个向导，所以这里不再区分平台。 */}
+          <button
+            onClick={() => setXlsOpen(true)}
+            className="btn-ghost"
+            title="从教务系统导出的 Excel 导入课表（先选你的学校）"
+          >
+            <FileSpreadsheet size={14} /> XLS 导入
+          </button>
           {SHOW_HOMEWORK && (
             <div className="relative">
               <button

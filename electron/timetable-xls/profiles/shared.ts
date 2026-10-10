@@ -1,24 +1,13 @@
 /**
  * 学校档案共用的小工具（**不 import electron**，以便单测直接跑）。
+ *
+ * v1.2.18：作息表已搬到 electron/core/periods.ts（唯一出处），这里只做 re-export，
+ * 免得档案代码里到处 import core/。
  */
 import type { ParsedClassItem } from '../../ustb/api';
+import { FALLBACK_PERIODS, PERIODS_PER_BIG_SESSION, bigSessionOf, parseTimeRange } from '../../core/periods';
 
-/**
- * 大节 → 上课时间。与教务导入用的是同一张表（v1.1.x 起一直没变过）。
- * 没有它就只能把时间留空 —— 而课表视图按时间画的，没有时间等于没导入。
- */
-export const FALLBACK_PERIODS: Record<number, [string, string]> = {
-  1: ['08:00', '09:35'], 2: ['09:50', '11:25'], 3: ['14:00', '15:35'],
-  4: ['15:50', '17:25'], 5: ['18:30', '20:05'], 6: ['20:10', '21:45'],
-};
-
-/** 每半天 2 个小节 → 大节号 = ceil(首节 / 2)。1-2→1、3-4→2、5-6→3… */
-export const PERIODS_PER_BIG_SESSION = 2;
-
-export function bigSessionOf(firstPeriod: number): number {
-  if (!Number.isFinite(firstPeriod) || firstPeriod <= 0) return 0;
-  return Math.ceil(firstPeriod / PERIODS_PER_BIG_SESSION);
-}
+export { FALLBACK_PERIODS, PERIODS_PER_BIG_SESSION, bigSessionOf, parseTimeRange };
 
 /** 单元格 → 去空白的字符串 */
 export function cellToString(v: unknown): string {
@@ -44,19 +33,6 @@ export function parseDay(s: string): number | null {
   const n = parseInt(t, 10);
   if (n >= 1 && n <= 7) return n;
   return null;
-}
-
-/** "08:00-09:35" → [{start,end,period}]；不是时间段则返回空数组 */
-export function parseTimeRange(s: string): { start: string; end: string; period: number }[] {
-  const m = s.match(/(\d{1,2}:\d{2})\s*[~\-～—]\s*(\d{1,2}:\d{2})/);
-  if (!m) return [];
-  const start = m[1].length === 4 ? '0' + m[1] : m[1];
-  const end = m[2].length === 4 ? '0' + m[2] : m[2];
-  let period = 0;
-  for (const [k, v] of Object.entries(FALLBACK_PERIODS)) {
-    if (v[0] === start && v[1] === end) { period = +k; break; }
-  }
-  return [{ start, end, period: period || 0 }];
 }
 
 /**

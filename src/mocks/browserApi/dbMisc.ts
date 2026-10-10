@@ -115,10 +115,13 @@ export function createMiscApi(data: MockData) {
     },
     attendance: {
       list: async () => { await delay(); return data.attendances.map((a) => withCourseInfo(a, data)); },
-      upsert: async (payload: Partial<Attendance>) => {
+      // v1.2.18：参数类型随 api-factory 的契约走（DTO 声明 status 是 string）——
+      // 以前这里写 Partial<Attendance>（status 是联合类型），比契约更严，
+      // 于是 TaskAPI 一锚定就报错：mock 比真实实现还挑剔，是漂移的反面但同样有害。
+      upsert: async (payload: { course_id: number; date: string; status: string; note?: string }) => {
         await delay();
         const i = data.attendances.findIndex((a) => a.course_id === payload.course_id && a.date === payload.date);
-        if (i >= 0) data.attendances[i] = { ...data.attendances[i], ...payload };
+        if (i >= 0) data.attendances[i] = { ...data.attendances[i], ...payload } as Attendance;
         else data.attendances.push({ id: nextId(), created_at: Date.now(), ...payload } as Attendance);
         return data.attendances.find((a) => a.course_id === payload.course_id && a.date === payload.date);
       },

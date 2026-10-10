@@ -21,6 +21,29 @@ import { createSettingsApi } from './browserApi/dbSettings';
 import { createMiscApi } from './browserApi/dbMisc';
 import { createClassMockApi } from './classMock';
 
+/**
+ * v1.2.18：给 mock 加上 TaskAPI 类型锚点。
+ *
+ * 以前这里没有任何标注，于是「mock 与真实 IPC 是否对齐」完全靠人记得：
+ *   - `diag.*` / `about.*` / `homework.*` 三个命名空间整个缺失（设置页诊断卡一调就 TypeError）
+ *   - `updater.patchApply / patchState / patchTakeoverSidecar` 缺失
+ *   - 仓库里唯一的对齐脚本 scripts/check-ipc-align.js 已经失效（找的是 preload 里的
+ *     `ipcRenderer.invoke` 字面量，而 preload 早就改成 buildAPI(invoke, send, subscribe)）且从未接入 npm
+ *
+ * 现在标注上返回类型，漂移立刻变成编译错误。缺失的方法用 notImplemented 显式占位 ——
+ * 「预览模式不支持」和「漏了」在代码里必须长得不一样。
+ */
+import type { TaskAPI } from '../../electron/api-factory';
+// v1.2.18：作息表与桌面端共用一份（electron/core 不 import electron，浏览器可用）
+import { FALLBACK_PERIODS } from '../../electron/core/periods';
+
+/** 预览模式显式不支持：调用即抛，而不是静默返回 undefined 让 UI 崩在别处 */
+function notImplemented(ns: string) {
+  return (method: string) => (): never => {
+    throw new Error(`浏览器预览模式不支持 taskAPI.${ns}.${method}（请在桌面应用里操作）`);
+  };
+}
+
 // 浏览器模式常量（v1.2.8 块 L：迁移到独立模块，但保留默认源/默认版本号以兼容 UI）
 export const MOCK_APP_VERSION = '0.2.5';
 // v1.2.17：以前这里是 https://github.com/lc-sys/TaskManager/releases —— GitHub 时代的
@@ -87,7 +110,7 @@ function pickBackupFile(): Promise<File | null> {
 }
 
 // ---------- Mock API ----------
-export function createBrowserApi() {
+export function createBrowserApi(): TaskAPI {
   const data: MockData = createMockData();
 
   return {
@@ -153,10 +176,9 @@ export function createBrowserApi() {
         dt.setHours(0, 0, 0, 0);
         dt.setDate(dt.getDate() + (dt.getDay() === 0 ? -6 : 1 - dt.getDay()));
         const monday0 = dt.getTime();
-        const periods: Record<number, [string, string]> = {
-          1: ['08:00', '09:35'], 2: ['09:50', '11:25'], 3: ['14:00', '15:35'],
-          4: ['15:50', '17:25'], 5: ['18:30', '20:05'], 6: ['20:10', '21:45'],
-        };
+        // v1.2.18：作息表不再内联 —— 直接用 core/periods（浏览器预览也能 import：
+        // core/ 不 import electron、不碰 Node 内置模块）。
+        const periods = FALLBACK_PERIODS;
         const palette = ['#00FF88', '#00D4FF', '#FFD166', '#FF6B9D', '#A78BFA', '#4ADE80', '#F97316', '#22D3EE', '#F472B6', '#FACC15'];
         const groups = new Map<string, typeof USTB_DEMO_ITEMS>();
         for (const it of USTB_DEMO_ITEMS) {
@@ -338,6 +360,12 @@ export function createBrowserApi() {
         platform: 'web',
         packaged: false,
       }),
+      // v1.2.18：这三个方法 TaskAPI 锚定时报缺失 —— 真实契约里有（api-factory.ts:256-260，
+      // 分别对应 app:ready-to-show / app:getCloseBehavior / app:setCloseBehavior），
+      // 而 mock 只有 info。预览模式下没有窗口也没有托盘，给出诚实的占位而不是假装能用。
+      ready: () => { /* 浏览器预览没有窗口可显示 */ },
+      getCloseBehavior: async () => 'quit' as const,
+      setCloseBehavior: async () => 'quit' as const,
     },
 
     // 软件更新（浏览器预览：模拟检查结果，不做真实下载）
@@ -417,9 +445,15 @@ export function createBrowserApi() {
       install: async () => ({ ok: false, error: '(浏览器预览模式不支持安装，请在桌面应用中使用)' }),
       patchPreview: async () => ({ available: false, reason: 'browser_mock' }),
       patchDownload: async () => ({ ok: false, error: '(浏览器预览模式不支持下载补丁)' }),
-      patchCacheState: async () => ({ exists: false, info: null, zipOk: false }),
+      patchCacheState: async () => ({ exists: false, zipOk: false }),
       patchApplyCached: async () => ({ ok: false, error: '(浏览器预览模式不支持应用补丁)' }),
       patchClearCache: async () => ({ ok: true }),
+      // v1.2.18：这三个是 TaskAPI 锚定时暴露的缺口（真实契约有、mock 没有）。
+      // 它们存在的意义是「主进程补丁状态机的唯一真相」在预览模式下也要有个形状，
+      // 否则 PatchStateCard 一挂载就 undefined。预览模式永远给「干净状态」。
+      patchState: async () => ({}),
+      patchApply: async () => ({ ok: false, error: '(浏览器预览模式不支持应用补丁)' }),
+      patchTakeoverSidecar: async () => ({ ok: false, error: '(浏览器预览模式没有 .new 旁路可接管' }),
       openExternal: async (url: string) => { window.open(url, '_blank', 'noopener'); return { ok: true }; },
       skipVersion: async (v: string) => { data.settings.update_skipped_version = v; return { ok: true }; },
       setSource: async (s: string) => {
@@ -545,10 +579,24 @@ export function createBrowserApi() {
         { id: 'generic', name: '通用（一行一节课）', layout: 'records' as const },
       ],
       parseFile: async () => { throw new Error('浏览器预览模式不支持导入课表，请在桌面应用里操作'); },
+      parseBuffer: async () => { throw new Error('浏览器预览模式不支持导入课表'); },
       reparse: async () => { throw new Error('浏览器预览模式不支持导入课表'); },
       importItems: async () => { throw new Error('浏览器预览模式不支持导入课表'); },
       lastImport: async () => ({ lastSync: 0, courseCount: 0 }),
     },
+
+    // v1.2.18：TaskAPI 锚定后暴露的三个整块缺失的命名空间。
+    // 用 notImplemented 显式占位而不是让它们消失 —— 「预览模式不支持」在代码里
+    // 应该长成一个报错函数，而不是 undefined（后者会让 UI 在别处崩，且看不出原因）。
+    homework: new Proxy({} as TaskAPI['homework'], {
+      get: (_t, prop: string) => notImplemented('homework')(prop),
+    }),
+    diag: new Proxy({} as TaskAPI['diag'], {
+      get: (_t, prop: string) => notImplemented('diag')(prop),
+    }),
+    about: new Proxy({} as TaskAPI['about'], {
+      get: (_t, prop: string) => notImplemented('about')(prop),
+    }),
 
     // v1.2.3：主进程事件（浏览器无）
     system: {

@@ -9,13 +9,16 @@
  * 列名、周次写法都不同），与其写一个谁都不像的万能解析器，不如让用户先选自己学校，
  * 再由对应档案解析。档案清单来自 electron/timetable-xls/profiles。
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Calendar, FileSpreadsheet, GraduationCap } from 'lucide-react';
 import dayjs from 'dayjs';
 import Modal from '@/components/Modal';
 import type { XlsFieldMapping, XlsImportSummary, XlsParseResult, XlsProfile } from '@/types';
 
 const EMPTY_MAPPING: XlsFieldMapping = { className: -1, teacher: -1, weeks: -1, day: -1, period: -1, location: -1 };
+
+/** 移动端（Capacitor WebView）标志 —— 与 CoursesPage 的 IS_MOBILE 同一个判据 */
+const IS_MOBILE = typeof window !== 'undefined' && !!(window as any).__MOBILE__;
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -49,6 +52,8 @@ export default function XlsImportWizard({
   const [replace, setReplace] = useState(true);
   const [summary, setSummary] = useState<XlsImportSummary | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  /** 手机上用：隐藏的 file input，点按钮时由脚本触发 */
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = useCallback(async () => {
     setStep('file'); setBusy(false); setFile(null); setParsed(null);
@@ -62,21 +67,43 @@ export default function XlsImportWizard({
 
   useEffect(() => { if (open) void reset(); }, [open, reset]);
 
-  /** 选文件 + 解析；解析结果里的学期信息回填到表单（用户仍可改） */
+  /**
+   * 选文件 + 解析。两条路：
+   *   · 桌面：Electron 原生对话框（xls:pickFile → 按路径读）
+   *   · 手机：`<input type="file">` 拿到字节 → xls:parseBuffer
+   * Android 上没有 showOpenDialog（shim 直接返回 canceled），所以必须走后者，
+   * 否则「导入课表」在手机上就是个死按钮。
+   */
   const pick = async () => {
+    if (IS_MOBILE) { fileInputRef.current?.click(); return; }
     setBusy(true); setMsg(null);
     try {
       const fp = await window.taskAPI.xls.pickFile();
       if (!fp) return;
-      const r = await window.taskAPI.xls.parseFile(fp, profileId || undefined);
-      setFile(fp); setParsed(r); setMapping(r.mapping);
-      if (r.profile?.id && r.profile.id !== profileId) setProfileId(r.profile.id);
-      if (r.term?.xn) setXn(r.term.xn);
-      if (r.term?.xq) setXq(r.term.xq);
-      if (r.term?.semesterStart) setStart(dayjs(r.term.semesterStart).format('YYYY-MM-DD'));
-      setStep(r.needMapping ? 'mapping' : 'options');
+      applyParsed(await window.taskAPI.xls.parseFile(fp, profileId || undefined), fp);
     } catch (e: any) { setMsg({ ok: false, text: e?.message || '解析失败' }); }
     finally { setBusy(false); }
+  };
+
+  const onPickedBytes = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = ''; // 允许重复选同一个文件
+    if (!f) return;
+    setBusy(true); setMsg(null);
+    try {
+      const buf = await f.arrayBuffer();
+      applyParsed(await window.taskAPI.xls.parseBuffer(buf, profileId || undefined), f.name);
+    } catch (e2: any) { setMsg({ ok: false, text: e2?.message || '解析失败' }); }
+    finally { setBusy(false); }
+  };
+
+  const applyParsed = (r: XlsParseResult, label: string) => {
+    setFile(label); setParsed(r); setMapping(r.mapping);
+    if (r.profile?.id && r.profile.id !== profileId) setProfileId(r.profile.id);
+    if (r.term?.xn) setXn(r.term.xn);
+    if (r.term?.xq) setXq(r.term.xq);
+    if (r.term?.semesterStart) setStart(dayjs(r.term.semesterStart).format('YYYY-MM-DD'));
+    setStep(r.needMapping ? 'mapping' : 'options');
   };
 
   const doImport = async () => {
@@ -110,7 +137,7 @@ export default function XlsImportWizard({
             <button onClick={onClose} className="btn-ghost mr-auto">取消</button>
             {step === 'file' && (
               <button onClick={pick} disabled={busy || !profiles.length} className="btn-neon">
-                <FileSpreadsheet size={14} /> {busy ? '解析中…' : '选择文件并解析'}
+                <FileSpreadsheet size={14} /> {busy ? '解析中…' : IS_MOBILE ? '选择课表文件' : '选择文件并解析'}
               </button>
             )}
             {step === 'mapping' && (
@@ -143,6 +170,18 @@ export default function XlsImportWizard({
       }
     >
       <div className="space-y-3">
+        {/* v1.2.18：手机上没有原生文件选择框（Capacitor WebView 里 dialog.showOpenDialog
+            直接返回 canceled），所以用隐藏的 file input —— 选完直接把字节交给主进程解析。
+            accept 里的 .xls 是重点：齐鲁理工这类老教务导出的就是 BIFF8 格式。 */}
+        {IS_MOBILE && (
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xls,.xlsx,.xlsm,.csv"
+            className="hidden"
+            onChange={onPickedBytes}
+          />
+        )}
         {step === 'file' && (
           <div className="text-sm text-text-secondary space-y-3">
             <Field label="你的学校（决定用哪个解析器）">

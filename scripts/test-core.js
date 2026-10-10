@@ -18,6 +18,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const ics = require(path.join(ROOT, 'dist-electron', 'core', 'ics.js'));
+const periods = require(path.join(ROOT, 'dist-electron', 'core', 'periods.js'));
 
 let pass = 0, fail = 0;
 function check(name, cond, extra = '') {
@@ -93,6 +94,27 @@ check('空列表也能产出合法日历', ics.buildIcs([], NOW).startsWith('BEG
 check('缺 start_at 的事件被跳过，不产出 Invalid Date',
   !ics.buildIcs([{ id: 1, title: '坏数据' }], NOW).includes('NaN'));
 check('undefined 入参不炸', ics.buildIcs(undefined, NOW).startsWith('BEGIN:VCALENDAR'));
+
+// ── periods（v1.2.18：从三份副本收成 electron/core/periods.ts 唯一出处）
+console.log('\n【periods · 大节 ↔ 时间】');
+check('大节 1 → 08:00-09:35', periods.periodsOf(1)[0] === '08:00' && periods.periodsOf(1)[1] === '09:35', periods.periodsOf(1).join('-'));
+check('大节 6 → 20:10-21:45', periods.periodsOf(6)[0] === '20:10', periods.periodsOf(6).join('-'));
+check('越界大节走兜底而不是 undefined', periods.periodsOf(99)[0] === '08:00', periods.periodsOf(99).join('-'));
+check('小节 → 大节：1-2 → 1', periods.bigSessionOf(1) === 1);
+check('小节 → 大节：3-4 → 2', periods.bigSessionOf(3) === 2);
+check('小节 → 大节：5-6 → 3', periods.bigSessionOf(5) === 3);
+check('小节 → 大节：非法输入 → 0', periods.bigSessionOf(0) === 0 && periods.bigSessionOf(NaN) === 0);
+const tr1 = periods.parseTimeRange('08:00-09:35');
+check('反查：时间段 → 大节 1', tr1.length === 1 && tr1[0].period === 1, JSON.stringify(tr1));
+const tr2 = periods.parseTimeRange('20:10-21:45');
+check('反查：时间段 → 大节 6', tr2.length === 1 && tr2[0].period === 6, JSON.stringify(tr2));
+check('反查：非时间段 → 空数组', periods.parseTimeRange('第3-4节').length === 0);
+check('反查：补零 "8:00-9:35" → 08:00', periods.parseTimeRange('8:00-9:35')[0].start === '08:00', JSON.stringify(periods.parseTimeRange('8:00-9:35')));
+check('正反一致：每对时间段都能反查回自己的大节',
+  Object.entries(periods.FALLBACK_PERIODS).every(([k, v]) => {
+    const back = periods.parseTimeRange(v[0] + '-' + v[1]);
+    return back.length === 1 && back[0].period === Number(k);
+  }));
 
 console.log('\n' + '─'.repeat(56));
 console.log(`  结果：${pass} 通过，${fail} 失败`);

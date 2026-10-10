@@ -28,15 +28,12 @@ const DAY = 86400000;
 
 const PALETTE = ['#00FF88', '#00D4FF', '#FFD166', '#FF6B9D', '#A78BFA', '#4ADE80', '#F97316', '#22D3EE', '#F472B6', '#FACC15'];
 
-/** 教务作息接口拿不到时的兜底时间表（大节 → [开始, 结束]） */
-const FALLBACK_PERIODS: Record<number, [string, string]> = {
-  1: ['08:00', '09:35'],
-  2: ['09:50', '11:25'],
-  3: ['14:00', '15:35'],
-  4: ['15:50', '17:25'],
-  5: ['18:30', '20:05'],
-  6: ['20:10', '21:45'],
-};
+/**
+ * v1.2.18：兜底时间表搬��� electron/core/periods.ts（唯一出处）。
+ * 以前这里是私有副本，与课表档案、浏览器 mock 共三份 —— 而 mock 那份最容易被遗忘：
+ * 改作息时没人会想到去改一个「预览用的假数据」。
+ */
+import { periodsOf } from '../core/periods';
 
 function hashString(s: string): number {
   let h = 0;
@@ -124,7 +121,8 @@ export function importCurriculum(db: Database, items: ParsedClassItem[], opts: I
 
       for (const it of its) {
         const period = periodMap.get(it.period);
-        const fallback = FALLBACK_PERIODS[it.period] ?? ['08:00', '09:35'];
+        // v1.2.18：兜底收进 periodsOf()，不再在调用点内联 ['08:00','09:35']
+        const fallback = periodsOf(it.period);
         const startStr = period?.start ?? fallback[0];
         const endStr = period?.end ?? fallback[1];
         if (!period) warnings.push(`第${it.period}大节无官方作息时间，按默认 ${startStr}-${endStr} 处理`);

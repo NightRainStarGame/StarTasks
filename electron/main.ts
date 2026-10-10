@@ -414,11 +414,14 @@ app.whenReady().then(() => {
         bootLog(`patch state: FAILED expected=${b.expected} actual=${b.actual}`);
         // v1.2.17：以前失败只写 boot.log，用户永远看不到 —— 于是「补丁没装上」这件事
         // 在用户那里就表现为「点了更新、退出、什么都没变」，完全无从排查。
-        // 现在把原因推到渲染层，由 UpdateNotification/PatchPanel 显示（重启后仍可见）。
+        //
+        // v1.2.18：这里原来还向渲染层广播 update:patch:bootState，注释写着「推到渲染层让用户
+        // 看到」—— 但**那个通道没人接**（api-factory 没有 subscribe、UI 没有监听），全仓只有
+        // 这一行提到它。用户仍然看不到，只是从「完全静默」变成「往一个没人接的频道广播」。
+        //
+        // 现在删掉推送，只保留原生弹窗：启动自检发生在窗口出现之前，那时渲染层还没订阅，
+        // 推送必然空放。设置页里的 PatchStateCard 走自己的 patchState() 拉取，不依赖这条推送。
         const reasonText = state.error || `补丁未生效（${state.reason || '未知原因'}）`;
-        for (const w of BrowserWindow.getAllWindows()) {
-          if (!w.isDestroyed()) w.webContents.send('update:patch:bootState', { failed: true, reason: state.reason, error: reasonText });
-        }
         const justFailed = state.failedAt && Date.now() - state.failedAt < 10 * 60 * 1000;
         if (justFailed) {
           dialog.showErrorBox('上次更新没有生效', `${reasonText}\n\n可以到「设置 → 软件更新」里改用整包更新，或重新下载补丁。`);

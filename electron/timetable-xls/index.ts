@@ -6,7 +6,9 @@ import { safetyBackup } from '../backup';
 import { refreshCourseKeys } from '../db/index';
 import { detectProfile, getProfile, listProfiles } from './profiles';
 import { autoMapping, parseRecords, toRecords } from './profiles/generic';
-import { FALLBACK_PERIODS } from './profiles/shared';
+// v1.2.18：作息表与兜底都收在 electron/core/periods（唯一出处，桌面/移动/mock 共用）
+import { FALLBACK_PERIODS, periodsOf } from '../core/periods';
+const hasPeriod = (n: number) => Object.prototype.hasOwnProperty.call(FALLBACK_PERIODS, n);
 import type { FieldMapping, ProfileInfo } from './profiles/types';
 
 const DAY = 86400000;
@@ -62,7 +64,14 @@ async function pickFile(): Promise<string | null> {
 
 /** ========== IPC：解析文件（按学校档案分发） ========== */
 async function parseFile(filePath: string, profileId?: string): Promise<ParseResult> {
-  const wb = XLSX.readFile(filePath, { cellDates: false });
+  return parseWorkbook(XLSX.readFile(filePath, { cellDates: false }), profileId);
+}
+
+/**
+ * v1.2.18：解析的真正入口（桌面从路径、Android 从字节，两条路都汇到这里）。
+ * 拆出来是因为「读文件」和「解析」是两件事，只有前者跟平台有关。
+ */
+function parseWorkbook(wb: XLSX.WorkBook, profileId?: string): ParseResult {
   const sheetName = wb.SheetNames[0];
   if (!sheetName) throw new Error('Excel 文件没有可用的工作表');
   const sheet = wb.Sheets[sheetName];
@@ -194,10 +203,12 @@ function importFromXls(db: Database, items: ParsedClassItem[], opts: ImportOptio
       courseIds.push(courseId);
 
       for (const it of its) {
-        const fallback = FALLBACK_PERIODS[it.period] ?? ['08:00', '09:35'];
+        // v1.2.18：兜底收进 periodsOf()，不再在调用点内联 ['08:00','09:35']
+        const fallback = periodsOf(it.period);
         const [sh, sm] = fallback[0].split(':').map(Number);
         const [eh, em] = fallback[1].split(':').map(Number);
-        if (!FALLBACK_PERIODS[it.period]) warnings.push(`第${it.period}大节无对照表，按默认 ${fallback[0]}-${fallback[1]} 处理`);
+        // 越界大节才告警（periodsOf 已给兜底）—— 用 hasPeriod 判定，避免这里再摸一次表
+        if (!hasPeriod(it.period)) warnings.push(`第${it.period}大节无对照表，按默认 ${fallback[0]}-${fallback[1]} 处理`);
 
         for (const w of it.weeks) {
           const base = new Date(monday0 + (w - 1) * 7 * DAY + (it.day - 1) * DAY);
@@ -229,6 +240,24 @@ export function registerXlsImport(db: Database) {
   /** 渲染层渲染学校下拉框用；用户选定后把 profileId 传给 parseFile */
   ipcMain.handle('xls:listProfiles', () => listProfiles());
   ipcMain.handle('xls:parseFile', (_e, filePath: string, profileId?: string) => parseFile(filePath, profileId));
+  /**
+   * v1.2.18：从**字节**解析（不经过文件路径）。
+   *
+   * 为什么需要：Android 上没有 Electron 的 dialog.showOpenDialog —— 移动端 shim 直接
+   * 返回 `{canceled:true}`，所以「选文件」这一步在手机上永远走不通。于是改走
+   * 渲染层的 `<input type="file">`：用户选完，浏览器拿到的就是一段字节，
+   * 直接丢过来解析（SheetJS 的 XLSX.read 接受 Uint8Array）。
+   *
+   * 这样课表导入在手机上是**真的可用**，而不是我上一版把按钮藏在 `!IS_MOBILE` 后面假装没有。
+   */
+  ipcMain.handle('xls:parseBuffer', (_e, buffer: ArrayBuffer | Uint8Array, profileId?: string) => {
+    try {
+      const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+      return parseWorkbook(XLSX.read(bytes, { cellDates: false }), profileId);
+    } catch (e: any) {
+      throw new Error(`无法读取这个文件：${e?.message || e}（如果是 .xls 老格式，请在电脑上另存为 .xlsx 再试）`);
+    }
+  });
   ipcMain.handle('xls:reparse', (_e, parsed: ParseResult, mapping: FieldMapping) => reparse(parsed, mapping));
   // 导入会按 replaceExisting 连带删除已有 XLS/教务课表 —— 执行前先做安全备份（backups/pre-import-*.db），
   // 一旦导入结果不符合预期，用户可从备份找回（2026-09-17 课表丢失事故的教训）。

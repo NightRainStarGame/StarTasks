@@ -340,10 +340,123 @@ if (patchInfo) {
   }
 }
 
-// APK → SSIO（platform=android；APK 由 gradle 单独构建，这里只在产物存在时上传。
-// publish-release-ssio.js 会把 android 的 releaseId 写进 .ssio-last-release-android.json，
-// release.js 生成清单时读它写 ssio:release:<id> 引用。）
+// APK → SSIO（platform=android）
+//
+// v1.2.18：这一段以前只是「把磁盘上已有的 APK 传上去」，从不自己构建 —— 于是 APK 里
+// 烙的版本号取决于**谁在什么时候构建的**：1.2.17 那次我在版本号提升前就编了 APK，
+// 装上去后应用里显示的还是 1.2.16（APK 本身的 versionName 却是 1.2.17）。
+// 这种错没有任何机制会拦住它，所以现在把构建收进流程：版本号提升之后、传之前，
+// 由脚本自己 build:mobile → cap copy → gradlew assembleRelease。
+//
+// 固定用 JDK 21：机器默认的 JDK 26 与 AGP 8.x 不兼容（gradle jlink 阶段直接失败）。
+function buildApk() {
+  step('构建 APK（版本号已提升，这次构建出来的才是对的）');
+  const sh = (cmd, args, opts = {}) => {
+    const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit', shell: false, ...opts });
+    return r.status === 0;
+  };
+  if (!sh(process.execPath, [path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js'), 'build', '--config', 'vite.mobile.config.ts'])) {
+    console.log('    [!] 移动端资源构建失败，APK 将沿用旧产物（可能带旧版本号）');
+    return false;
+  }
+  // index-mobile.html → index.html（capacitor 需要的入口名）
+  try {
+    fs.copyFileSync(path.join(ROOT, 'dist-mobile', 'index-mobile.html'), path.join(ROOT, 'dist-mobile', 'index.html'));
+  } catch {}
+  // 注意用 cap copy 而不是 cap sync：后者会先删目录，被 IDE 的 safe-delete 垫片拦下
+  if (!sh(process.execPath, [path.join(ROOT, 'node_modules', '@capacitor', 'cli', 'bin', 'capacitor'), 'copy', 'android'])) {
+    console.log('    [!] cap copy android 失败');
+    return false;
+  }
+  const gradlew = path.join(ROOT, 'android', 'gradlew.bat');
+  const javaHome = pickJdk21();
+  if (javaHome) console.log(`    JAVA_HOME=${javaHome}`);
+  const r = spawnSync(gradlew, ['assembleRelease', '--no-daemon'], {
+    cwd: path.join(ROOT, 'android'),
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, ...(javaHome ? { JAVA_HOME: javaHome } : {}) },
+  });
+  if (r.status !== 0) {
+    console.log('    [!] gradle assembleRelease 失败，APK 将沿用旧产物（可能带旧版本号）');
+    return false;
+  }
+  return true;
+}
+
+/** 找一个 JDK 21（AGP 8.x 只认到 21；默认的 26 会在 jlink 阶段炸） */
+function pickJdk21() {
+  const candidates = [];
+  const base = 'C:\\Program Files\\Java';
+  if (fs.existsSync(base)) {
+    for (const d of fs.readdirSync(base)) {
+      if (/^jdk-21/i.test(d)) candidates.push(path.join(base, d));
+    }
+  }
+  if (process.env.JAVA_HOME && /jdk-21/i.test(process.env.JAVA_HOME)) candidates.unshift(process.env.JAVA_HOME);
+  return candidates[0] || '';
+}
+
 const apkPath = path.join(ROOT, 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk');
+// --skip-build / --resume 时不重建（产物应已存在）；正常发版则先构建再上传
+if (!SKIP_BUILD && !RESUME) buildApk();
+
+/**
+ * v1.2.18：上传前核对 APK 里烙的**应用版本号**。
+ *
+ * 1.2.17 出过一次这个事故：APK 的 versionName 是 1.2.17，但里面的 web 资源显示 1.2.16 ——
+ * 因为构建发生在版本号提升之前。装上去的用户一律看到旧版本号，而所有校验（APK 自身的
+ * versionName、SSIO 回读、清单 android 段）全都是绿的，没有任何一处会报警。
+ *
+ * 注意不能直接对 APK 文件做字节搜索：它是 zip，JS 是 deflate 压缩过的，
+ * 裸搜什么都搜不到（我第一版就踩了这个坑）。必须按 zip 条目解压出来再读。
+ */
+const zlib = require('zlib');
+
+/** 从 zip 里取出指定条目（支持 store / deflate），零依赖。取不到返回 null */
+function readZipEntry(file, entryPath) {
+  let buf;
+  try { buf = fs.readFileSync(file); } catch { return null; }
+  const SIG = 0x04034b50;
+  for (let i = 0; i < buf.length - 4; i++) {
+    if (buf.readUInt32LE(i) !== SIG) continue;
+    const method = buf.readUInt16LE(i + 8);
+    const compSize = buf.readUInt32LE(i + 18);
+    const nameLen = buf.readUInt16LE(i + 26);
+    const extraLen = buf.readUInt16LE(i + 28);
+    const nameStart = i + 30;
+    const name = buf.toString('utf8', nameStart, nameStart + nameLen);
+    if (name !== entryPath) continue;
+    const dataStart = nameStart + nameLen + extraLen;
+    const data = buf.subarray(dataStart, dataStart + compSize);
+    try {
+      if (method === 0) return data;
+      if (method === 8) return zlib.inflateRawSync(data);
+      return null;
+    } catch { return null; }
+  }
+  return null;
+}
+
+function apkCarriesVersion(file) {
+  // 渲染层入口在 assets/public/assets/ 下，逐个 .js 都翻一遍（chunk 名可能变）
+  for (const name of ['assets/public/assets/mobile.js', 'assets/public/assets/main.js']) {
+    const data = readZipEntry(file, name);
+    if (!data) continue;
+    const text = data.toString('utf8');
+    if (text.includes(`"${version}"`) || text.includes(version)) return true;
+  }
+  return false;
+}
+if (fs.existsSync(apkPath) && !apkCarriesVersion(apkPath)) {
+  console.log(`    [x] APK 里找不到版本号 ${version} —— 这个包装的是旧页面，**不要发给用户**`);
+  console.log('        原因通常是构建发生在版本号提升之前。重新构建：');
+  console.log('        npm run build:mobile && npx cap copy android && cd android && gradlew assembleRelease');
+  if (EXECUTE) {
+    console.log('    [x] 中止发版（避免把版本错乱的包装到更新源上）。加 --skip-build 可强行跳过此检查。');
+    process.exit(1);
+  }
+}
 if (fs.existsSync(apkPath)) {
   step('上传 APK 到 SSIO（移动端更新源）');
   try {

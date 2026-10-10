@@ -516,6 +516,13 @@ export function buildAPI(invoke: Invoke, send: Send, subscribe?: Subscribe) {
       /** profileId 不传 = 后端自动猜（置信度 >=85 才自动选，否则落到通用档案） */
       parseFile: (filePath: string, profileId?: string) =>
         invoke('xls:parseFile', filePath, profileId) as Promise<XlsParseResultDTO>,
+      /**
+       * v1.2.18：从字节解析（**移动端唯一可用的入口**）。
+       * Android 的 dialog.showOpenDialog 在 shim 里直接返回 canceled，选不了文件，
+       * 所以那边走渲染层的 <input type="file"> → 字节 → 这里。
+       */
+      parseBuffer: (buffer: ArrayBuffer, profileId?: string) =>
+        invoke('xls:parseBuffer', buffer, profileId) as Promise<XlsParseResultDTO>,
       reparse: (parsed: XlsParseResultDTO, mapping: XlsFieldMappingDTO) =>
         invoke('xls:reparse', parsed, mapping) as Promise<XlsParseResultDTO>,
       importItems: (items: any[], opts: { xn: string; xq: '1' | '2'; semesterStart: number; replaceExisting: boolean }) =>
