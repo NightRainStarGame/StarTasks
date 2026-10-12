@@ -157,7 +157,9 @@ export function registerClass(db: DB) {
       `INSERT INTO class_tasks (id, class_id, author_alias, title, body, images_json, due_at, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)`
     ).run(e.id, classId, e.authorAlias || '', e.title, e.body, JSON.stringify(e.images || []), e.dueAt, e.createdAt);
-    return 'updated';
+    // v1.2.18：新插入分支原来也 return 'updated'，导致 class:sync 结果里 newTasks 恒 0、
+    // ClassDetail 的「新增 X 作业」计数失真。
+    return 'new';
   }
   // v1.2.9 R4：接龙 upsert（items 多端 union 合并）
   function upsertChain(classId: number, e: ChainEntry): 'new' | 'updated' {
@@ -437,7 +439,11 @@ export function registerClass(db: DB) {
     const alias = String(payload?.alias || '').trim().slice(0, 20) || getLocalAlias(db);
 
     // 本机去重
-    const exist = db.prepare('SELECT id FROM classes WHERE code = ?').get(classCode) as { id: number } | undefined;
+    // v1.2.18：必须排除 dissolved 僵尸行 —— 被踢成员的本机行只置 dissolved=1 不删除
+    // （class:sync 的踢出检测，index.ts:257-262），原来的去重会把僵尸行当成「已加入」，
+    // 导致被踢用户拿着同一个码再也加不回来，报「本机已加入此班级」。
+    // class:leave 是真删行，两条路径的语义原本就不一致。
+    const exist = db.prepare('SELECT id FROM classes WHERE code = ? AND dissolved = 0').get(classCode) as { id: number } | undefined;
     if (exist) return { ok: false, error: '本机已加入此班级', errorCode: 'ALREADY_JOINED', classId: exist.id };
 
     const manifest = await fetchManifest(inviteCode);

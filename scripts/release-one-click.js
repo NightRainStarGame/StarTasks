@@ -512,6 +512,9 @@ latest.urlMirrors = ssioReleaseId ? [] : setupMirrorUrls;
 latest.sha256 = sha256;
 latest.size = buf.length;
 latest.notes = notes;
+// v1.2.18：发布页地址随版本滚动 —— 以前从不更新，latest.json 的 page 一直指着 v1.2.12
+// 的 tag，UI 上「打开发布页」会把用户带去旧版页面。
+latest.page = `https://github.com/NightRainStarGame/USTBTaskManager/releases/tag/v${version}`;
 
 // v1.2.16 收尾：android 段也在这里组装。
 // 此前它由 scripts/release.js 单独维护，而一键发版不调用 release.js → 每次发版

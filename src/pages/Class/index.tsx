@@ -46,7 +46,10 @@ export default function ClassListPage() {
   return (
     <div className="p-6 space-y-4">
       {/* 顶部操作区 */}
-      <div className="flex items-center justify-between gap-3">
+      {/* v1.2.18：加 flex-wrap + 统一按钮 padding —— 4 个按钮在 ~390px 小屏上放不下一行，
+          也没有换行规则，于是按钮溢出屏幕右侧、与标题挤压（「UI 对不齐」反馈的头号嫌疑）。
+          顺手统一 py-1.5/py-2 混用（同排按钮高度差 4px）。 */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-neon-green text-glow-green flex items-center gap-2">
             <Users size={22} />
@@ -56,17 +59,17 @@ export default function ClassListPage() {
             班级数据实时同步到 SSIO 云服务器
           </p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={refresh} className="btn-ghost text-xs px-3 py-2" title="刷新列表">
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={refresh} className="btn-ghost text-xs" title="刷新列表">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button onClick={() => setShowConfig(true)} className="btn-ghost text-xs px-3 py-2" title="配置云盘/令牌">
+          <button onClick={() => setShowConfig(true)} className="btn-ghost text-xs" title="配置云盘/令牌">
             <SettingsIcon size={14} />
           </button>
-          <button onClick={() => setShowJoin(true)} className="btn-ghost text-xs px-3 py-1.5">
+          <button onClick={() => setShowJoin(true)} className="btn-ghost text-xs">
             <LogIn size={14} /> 加入班级
           </button>
-          <button onClick={() => setShowCreate(true)} className="btn-neon text-xs px-3 py-1.5">
+          <button onClick={() => setShowCreate(true)} className="btn-neon text-xs">
             <Plus size={14} /> 创建班级
           </button>
         </div>
@@ -190,7 +193,8 @@ function ClassCard({ cls, onOpen, onLeave }: { cls: any; onOpen: () => void; onL
         </div>
       )}
 
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* v1.2.18：同上 —— 触屏没有 hover，「离开班级」在手机上不可达 */}
+      <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
         <button
           onClick={(e) => { e.stopPropagation(); onLeave(); }}
           className="text-text-dim hover:text-red-400 p-1"
@@ -393,7 +397,12 @@ function JoinClassModal({ cfg, onClose, onJoined }: any) {
         <div>
           <span className="label-tag block mb-1">邀请码 *</span>
           <input
-            value={invite} onChange={(e) => setInvite(e.target.value.toUpperCase())}
+            value={invite} onChange={(e) => {
+              // v1.2.18：IME 合成中保留原文，避免打断中文输入法（拼音态打字母会被
+              // toUpperCase 重置 value，丢字）。与 HomeworkModals.tsx 的两处同型修复一致。
+              if ((e.nativeEvent as InputEvent)?.isComposing) { setInvite(e.target.value); return; }
+              setInvite(e.target.value.toUpperCase());
+            }}
             className="input-neon font-mono tracking-widest text-lg"
             placeholder="12 位字符"
             autoFocus maxLength={14}

@@ -123,20 +123,22 @@ export default function ClassDetailPage() {
             <span className={isOwner ? 'text-neon-yellow' : isAdmin ? 'text-neon-cyan' : 'text-text-secondary'}>{info.role}</span>
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <button onClick={sync} disabled={syncing} className="btn-ghost text-xs px-3 py-2">
+        {/* v1.2.18：flex-wrap + 统一 padding —— 同步/公告/接龙/投票四个按钮在
+            ~390px 小屏上必然溢出右侧（shrink-0 禁止收缩），是「UI 对不齐」的头号嫌疑 */}
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={sync} disabled={syncing} className="btn-ghost text-xs">
             <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
             同步
           </button>
           {canManage && (
-            <button onClick={() => setShowAnn(true)} className="btn-ghost text-xs px-3 py-1.5">
+            <button onClick={() => setShowAnn(true)} className="btn-ghost text-xs">
               <Plus size={14} /> 公告
             </button>
           )}
-          <button onClick={() => setShowChain(true)} className="btn-ghost text-xs px-3 py-1.5">
+          <button onClick={() => setShowChain(true)} className="btn-ghost text-xs">
             <Plus size={14} /> 接龙
           </button>
-          <button onClick={() => setShowPoll(true)} className="btn-neon text-xs px-3 py-1.5">
+          <button onClick={() => setShowPoll(true)} className="btn-neon text-xs">
             <Plus size={14} /> 投票
           </button>
         </div>
@@ -223,7 +225,7 @@ export default function ClassDetailPage() {
                   {canManage && (
                     <button
                       onClick={() => deleteAnn(a.id)}
-                      className="opacity-0 group-hover:opacity-100 text-text-dim hover:text-red-400 transition-opacity"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-text-dim hover:text-red-400 transition-opacity"
                       title="删除公告"
                     >
                       <Trash2 size={12} />
@@ -586,8 +588,10 @@ function MemberList({ classId, info, onChanged }: any) {
             <span className="text-text-dim font-mono text-[10px] ml-auto shrink-0 hidden sm:inline">
               加入于 {new Date(m.joinedAt).toISOString().slice(0, 10)}
             </span>
+            {/* v1.2.18：移动端没有 hover，这个模式会让「设管理员/移除成员」在手机上
+                永远不可见不可点 —— 触屏上常显，桌面保留悬停显隐 */}
             {(canPromote || canDemote || canRemove) && (
-              <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 {canPromote && (
                   <button
                     onClick={() => promote(m.alias, 'admin')}
