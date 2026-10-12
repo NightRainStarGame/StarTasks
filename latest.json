@@ -26,10 +26,10 @@
   ],
   "android": {
     "version": "1.2.18",
-    "versionCode": 12,
-    "url": "ssio:release:d49f98c8-6ca8-47bc-bb99-4fbd72b48720",
+    "versionCode": 13,
+    "url": "ssio:file:6eb89d4d-6d96-4b1a-bb52-867af97b71de",
     "mirrors": [],
-    "sha256": "9e090829f53f343d1ea31b587231f8a4ae987137f712db7a13e499d240e1d5ed",
+    "sha256": "db65a12f7b2e28e2dc06356e9cab2c1b9f84b8de4a4dc1ff717245c52aac031d",
     "size": 4714242,
     "fileName": "TaskManager-1.2.18.apk",
     "page": null

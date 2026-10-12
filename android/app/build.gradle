@@ -18,8 +18,11 @@ android {
         // （INSTALL_FAILED_VERSION_DOWNGRADE），表现为「永远更新不了」。
         // rev2（UI 重叠重做）= 8，装了上一版（7）的机器也能正常覆盖升级。
         // v1.2.17 = 12（课表导入 + 补丁退出修复）
-        versionCode 12
-        versionName "1.2.17"
+        // v1.2.18 = 13（班级/输入/UI 修复批次）。1.2.18 首发时漏提了这里（仍是 12），
+        // 导致 Android 1.2.17 用户 versionCode 相同、判定「已是最新」收不到更新，
+        // 已重发 android 段纠正。⚠️ 发版清单：versionCode 必须随版本一起提！
+        versionCode 13
+        versionName "1.2.18"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
