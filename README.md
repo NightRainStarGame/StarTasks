@@ -4,24 +4,25 @@
 
 ## 下载安装
 
-**当前最新版：v1.2.18**
+**当前最新版：v1.2.19**
 
-下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=win&version=1.2.18`（备案完成前可临时用 `http://120.53.9.81:8100` 的应用内更新链路）。
+下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=win&version=1.2.19`（备案完成前可临时用 `http://120.53.9.81:8100` 的应用内更新链路）。
 
 > v1.2.16 起安装包**只发布在自建 SSIO 服务器**上：GitHub 仓库只保留源码（不发 Release 附件），
 > 北科云盘 / jsDelivr / GitHub raw 等旧下载通道已全部下线。
+> ⚠️ 勿下载 1.2.18 首发版直链存档（其补丁助手有缺陷）；1.2.19 已含全部修复。
 
 安装向导支持**自定义安装目录**，无需管理员权限（按当前用户安装）。
 
 ### Android 版（APK）
 
-同一个代码库的移动端壳（Capacitor 8），**当前最新版 v1.2.18**（versionCode 13）。
+同一个代码库的移动端壳（Capacitor 8），**当前最新版 v1.2.19**（versionCode 14）。
 
-下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=android&version=1.2.18`。
+下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=android&version=1.2.19`。
 
 - 手机装好后**无需再手动下载**：**设置 → 软件更新** 里会直接显示新版本并支持「下载并安装」（原生下载 + SHA-256 校验 + 拉起系统安装器）
   - ⚠️ **1.2.16 及更早的 APK 收不到应用内更新**（当时更新清单的键名与发版脚本不一致，1.2.17 起才修复）——
-  > 老版本用户需要手动安装一次 v1.2.18 的 APK，之后恢复正常更新
+  > 老版本用户需要手动安装一次新版 APK，之后恢复正常更新
 - 首次安装需授权「允许安装未知应用」，App 会引导跳转到对应开关页
 - 移动端为功能子集：班级 / 作业同步 / 课表 Excel 导入可用；贝壳课表因依赖教务系统 CORS，不可用
 - 系统栏已按 Android 16 edge-to-edge 适配（状态栏 / 手势条不会遮挡菜单与按钮）
