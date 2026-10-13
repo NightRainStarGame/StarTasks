@@ -4,9 +4,9 @@
 
 ## 下载安装
 
-**当前最新版：v1.2.16**
+**当前最新版：v1.2.18**
 
-下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=win&version=1.2.16`（备案完成前可临时用 `http://120.53.9.81:8100` 的应用内更新链路）。
+下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=win&version=1.2.18`（备案完成前可临时用 `http://120.53.9.81:8100` 的应用内更新链路）。
 
 > v1.2.16 起安装包**只发布在自建 SSIO 服务器**上：GitHub 仓库只保留源码（不发 Release 附件），
 > 北科云盘 / jsDelivr / GitHub raw 等旧下载通道已全部下线。
@@ -15,13 +15,15 @@
 
 ### Android 版（APK）
 
-同一个代码库的移动端壳（Capacitor 8），**当前最新版 v1.2.16**（versionCode 11）。
+同一个代码库的移动端壳（Capacitor 8），**当前最新版 v1.2.18**（versionCode 13）。
 
-下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=android&version=1.2.16`。
+下载入口：`https://nrsc.games/api/public/taskmanager/dl?platform=android&version=1.2.18`。
 
 - 手机装好后**无需再手动下载**：**设置 → 软件更新** 里会直接显示新版本并支持「下载并安装」（原生下载 + SHA-256 校验 + 拉起系统安装器）
+  - ⚠️ **1.2.16 及更早的 APK 收不到应用内更新**（当时更新清单的键名与发版脚本不一致，1.2.17 起才修复）——
+  > 老版本用户需要手动安装一次 v1.2.18 的 APK，之后恢复正常更新
 - 首次安装需授权「允许安装未知应用」，App 会引导跳转到对应开关页
-- 移动端为功能子集：班级 / 作业同步可用；贝壳课表因依赖教务系统 CORS，不可用
+- 移动端为功能子集：班级 / 作业同步 / 课表 Excel 导入可用；贝壳课表因依赖教务系统 CORS，不可用
 - 系统栏已按 Android 16 edge-to-edge 适配（状态栏 / 手势条不会遮挡菜单与按钮）
 
 ## 自动更新
@@ -240,10 +242,10 @@ npm run build:exe
 
 ## 发布新版本
 
-改完 `package.json` 里的 `version` 后：
+`release:one` 会自己提升 `package.json` 的版本号，不用手动改：
 
 ```bash
-npm run release:one -- 1.2.15 --notes-file RELEASE-NOTES.md --execute   # 一键：build + SSIO 分发 + commit + push（源码）
+npm run release:one -- 1.2.19 --notes-file RELEASE-NOTES.md --execute   # 一键：build + SSIO 分发 + commit + push（源码）
 # 或手动分步：
 npm run build:exe          # 打包
 node scripts/publish-release-ssio.js <exe> <版本> [notes]                # ① 桌面整包 → SSIO（建 release 记录）
@@ -252,16 +254,18 @@ node scripts/publish-release-ssio.js --storage taskmgr/patches/<zip 名> <补丁
 node scripts/publish-manifest-kv.js                                    # ④ latest.json + about.txt → SSIO KV
 ```
 
-> **推荐用 `release:one`（一键脚本）**：自动完成打包 → 校验 → 分发目录滚动 → 桌面包/APK/补丁上传 SSIO →
-> latest.json 写入（`ssio:release/ssio:file` 引用）→ KV 清单同步 → git commit/push（**只推源码**）。
-> `--execute` 才会真正改动文件；默认 dry-run 只预览计划。
+> **推荐用 `release:one`（一键脚本）**：自动完成打包 → 校验 → 分发目录滚动 → APK 自动构建（版本号提升之后才构建，
+> 并在上传前校验 APK 里烙的版本号）→ 桌面包/APK/补丁上传 SSIO → latest.json 写入（`ssio:release/ssio:file` 引用）
+> → KV 清单同步 → git commit/push（**只推源码**）。`--execute` 才会真正改动文件；默认 dry-run 只预览计划。
+
+> ⚠️ **Android 的 `versionCode` 要手动提**（`android/app/build.gradle`）：脚本不碰它。
+> v1.2.18 就漏提过一次（与 1.2.17 同为 12），导致 Android 1.2.17 用户判定「已是最新」收不到更新。
+> versionCode 不递增 = 那一版 Android 用户全部收不到。
 
 ### 清单内容说明
 
 `url` 字段记的是 `ssio:release:<id>` 引用（APK 同理），补丁记 `ssio:file:<id>`；
-App 端 `resolveDownloadUrl` 在真正下载前用引用向 SSIO 换**新鲜签名直链**（5 分钟过期，现取现用）。
-
-`patches[]` 同样规则：GitHub 版是 raw 绝对链，云盘版改写成云盘内 basename。
+App 端 `resolveDownloadRef` 在真正下载前用引用向 SSIO 换**新鲜签名直链**（5 分钟过期，现取现用）。
 
 补丁清单**也有一份在 SSIO KV**（key `taskmgr/latest.json`，发版时由
 `scripts/publish-manifest-kv.js` 自动同步）：桌面端主源是 SSIO，而 SSIO 的
