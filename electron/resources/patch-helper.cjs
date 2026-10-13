@@ -25,7 +25,26 @@
  * - rename 失败（文件被持有） → 留 .new 旁路，主进程下次启动自检发现 sha256 不对走全量
  */
 'use strict';
-const fs = require('fs');
+/**
+ * v1.2.18：**必须用 original-fs，不能用 require('fs')。**
+ *
+ * 这是「点了安装 → 应用退出 → 然后什么都没发生」的真正根因，从补丁机制第一天就存在：
+ * Electron 的 fs 在 ELECTRON_RUN_AS_NODE=1 模式下**仍然拦截 .asar 路径**，把
+ * app.asar 当作归档目录：
+ *     statSync(asar)   → isDirectory=true, size=0
+ *     readFileSync(asar) → ENOENT「not found in app.asar」（把整条路径当作 asar 内条目）
+ *     readdirSync(asar) → 能列出 asar 里的文件！
+ * 于是 helper 的第一步（基线哈希校验）必然 ENOENT —— 哪怕文件在盘上好好的
+ * （PowerShell / 普通 node 都能读）。历史上这条 ENOENT 被归因为「外接硬盘掉线」，
+ * 修了一版又一版都没修到点上。
+ *
+ * original-fs 是 Electron 专门提供的未打补丁 fs；普通 node 下没有这个内置模块，
+ * 回退 require('fs')（纯 node 的 fs 没被拦截，本地测试也正确）。
+ * 实测（2026-10-13）：ELECTRON_RUN_AS_NODE 下 original-fs 可完整读出 76MB asar。
+ */
+const fs = (() => {
+  try { return require('original-fs'); } catch { return require('fs'); }
+})();
 const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
@@ -400,21 +419,41 @@ async function apply(opts) {
       }
     }
     if (!renamed) {
-      log(`[!] rename 全部失败：${lastRenameErr?.message} —— 写 .new 旁路`);
-      fs.copyFileSync(extractedAsar, sidecar);
-      log(`已写出 ${sidecar}`);
-      // v1.2.10：写旁路之后必须重启，否则用户重启看不到任何变化 —— 这就是以前
-      // 「补丁下载完了却永远装不上」的直接原因（helper 写 .new 后直接 return）。
-      writePatchState(opts.stateFile, {
-        phase: 'sidecar',
-        reason: 'rename-failed',
-        error: `旧 app.asar 无法重命名（可能被杀软占用）：${lastRenameErr?.message || ''}`,
-        sidecarPath: sidecar,
-        finishedAt: Date.now(),
-      });
-      if (relaunch) relaunchApp();
-      log('=== patch helper done (写 .new 旁路) ===');
-      return;
+      // v1.2.18：rename 被锁时先试「备份 + 原地覆写」，**比写 .new 旁路强**。
+      // 实战（2026-10-13）：文件被 IDE 索引器/杀软以「无 FILE_SHARE_DELETE」的读句柄
+      // 持有时 rename 必然 EBUSY —— 而 .new 旁路的接管同样需要 rename（`Takeover` 把
+      // .new rename 成 app.asar），锁没释放就永远接不了管，用户每次启动都看到
+      // 「有残留待接管」却点不动。原地覆写只需要写共享（读句柄通常允许），能穿透。
+      // 实测：被锁 8 次 rename 全失败的场景，覆写一次成功。
+      log(`[!] rename 全部失败（${lastRenameErr?.message}）—— 尝试原地覆写`);
+      try {
+        // 备份不需要动源文件：直接复制出 .bak（新建文件，无锁问题）
+        try { fs.unlinkSync(backup); } catch {}
+        fs.copyFileSync(appAsarPath, backup);
+        fs.copyFileSync(extractedAsar, appAsarPath);
+        const overwriteSha = sha256File(appAsarPath);
+        if (expectedToSha && overwriteSha !== expectedToSha) {
+          throw new Error(`覆写后校验失败：${overwriteSha.slice(0, 16)}… ≠ ${expectedToSha.slice(0, 16)}…`);
+        }
+        log(`原地覆写成功 sha256=${overwriteSha.slice(0, 16)}…（备份在 ${backup}）`);
+        // 覆写成功 → 走与 rename 相同的收尾路径（下面 finalSha 再自检一次）
+      } catch (e2) {
+        log(`[!] 原地覆写也失败：${e2.message} —— 退回 .new 旁路`);
+        fs.copyFileSync(extractedAsar, sidecar);
+        log(`已写出 ${sidecar}`);
+        // v1.2.10：写旁路之后必须重启，否则用户重启看不到任何变化 —— 这就是以前
+        // 「补丁下载完了却永远装不上」的直接原因（helper 写 .new 后直接 return）。
+        writePatchState(opts.stateFile, {
+          phase: 'sidecar',
+          reason: 'rename-failed',
+          error: `旧 app.asar 无法重命名也无法覆写（可能被杀软/索引器占用）：${lastRenameErr?.message || ''}`,
+          sidecarPath: sidecar,
+          finishedAt: Date.now(),
+        });
+        if (relaunch) relaunchApp();
+        log('=== patch helper done (写 .new 旁路) ===');
+        return;
+      }
     }
     fs.copyFileSync(extractedAsar, appAsarPath);
     const finalSha = sha256File(appAsarPath);

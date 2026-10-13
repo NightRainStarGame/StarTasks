@@ -1039,49 +1039,37 @@ export default function SettingsPage() {
             </Row>
             <Row label="完成的作业">
               <div className="flex items-center gap-1">
-                <input type="number" min={0} max={365} value={cleanRules.reqDays}
-                  onChange={(e) => patchCleanRule({ reqDays: Math.max(0, Number(e.target.value) || 0) })}
-                  className="input-neon w-16 py-0.5 px-2 text-xs text-right" />
+                <RuleDaysInput value={cleanRules.reqDays} min={0} max={365} onCommit={(v) => patchCleanRule({ reqDays: v })} />
                 <span className="text-xs text-text-dim">天后移入回收站</span>
               </div>
             </Row>
             <Row label="完成的任务">
               <div className="flex items-center gap-1">
-                <input type="number" min={0} max={365} value={cleanRules.taskDays}
-                  onChange={(e) => patchCleanRule({ taskDays: Math.max(0, Number(e.target.value) || 0) })}
-                  className="input-neon w-16 py-0.5 px-2 text-xs text-right" />
+                <RuleDaysInput value={cleanRules.taskDays} min={0} max={365} onCommit={(v) => patchCleanRule({ taskDays: v })} />
                 <span className="text-xs text-text-dim">天后移入回收站</span>
               </div>
             </Row>
             <Row label="过期的日程">
               <div className="flex items-center gap-1">
-                <input type="number" min={0} max={365} value={cleanRules.eventDays}
-                  onChange={(e) => patchCleanRule({ eventDays: Math.max(0, Number(e.target.value) || 0) })}
-                  className="input-neon w-16 py-0.5 px-2 text-xs text-right" />
+                <RuleDaysInput value={cleanRules.eventDays} min={0} max={365} onCommit={(v) => patchCleanRule({ eventDays: v })} />
                 <span className="text-xs text-text-dim">天后移入回收站</span>
               </div>
             </Row>
             <Row label="完结的项目">
               <div className="flex items-center gap-1">
-                <input type="number" min={0} max={365} value={cleanRules.projectDays}
-                  onChange={(e) => patchCleanRule({ projectDays: Math.max(0, Number(e.target.value) || 0) })}
-                  className="input-neon w-16 py-0.5 px-2 text-xs text-right" />
+                <RuleDaysInput value={cleanRules.projectDays} min={0} max={365} onCommit={(v) => patchCleanRule({ projectDays: v })} />
                 <span className="text-xs text-text-dim">天后移入回收站</span>
               </div>
             </Row>
             <Row label="上传的作业（云端）">
               <div className="flex items-center gap-1">
-                <input type="number" min={1} max={365} value={cleanRules.homeworkDays}
-                  onChange={(e) => patchCleanRule({ homeworkDays: Math.max(1, Number(e.target.value) || 1) })}
-                  className="input-neon w-16 py-0.5 px-2 text-xs text-right" />
+                <RuleDaysInput value={cleanRules.homeworkDays} min={1} max={365} onCommit={(v) => patchCleanRule({ homeworkDays: v })} />
                 <span className="text-xs text-text-dim">天后云端清理</span>
               </div>
             </Row>
             <Row label="回收站保留">
               <div className="flex items-center gap-1">
-                <input type="number" min={1} max={365} value={cleanRules.binDays}
-                  onChange={(e) => patchCleanRule({ binDays: Math.max(1, Number(e.target.value) || 1) })}
-                  className="input-neon w-16 py-0.5 px-2 text-xs text-right" />
+                <RuleDaysInput value={cleanRules.binDays} min={1} max={365} onCommit={(v) => patchCleanRule({ binDays: v })} />
                 <span className="text-xs text-text-dim">天后彻底删除</span>
               </div>
             </Row>
@@ -1557,6 +1545,39 @@ function Row({ label, children }: any) {
       <span className="text-sm text-text-secondary w-32 shrink-0">{label}</span>
       <div className="flex-1">{children}</div>
     </div>
+  );
+}
+
+/**
+ * v1.2.18：清理规则的天数输入框（「保留设置」那块的病根）。
+ *
+ * 以前 value 直接绑服务端返回的 cleanRules、且 onChange 每敲一键就 IPC 写库，
+ * 然后用响应整体回写 state —— 两个后果：
+ *   · 快速输入「30」时两次 patch 的响应可能乱序到达，值被回退成「3」；
+ *   · 想清空重输时，Number('')||min 立刻把值强制弹回，根本没法编辑。
+ * 用户看到的就是「这块 UI 是错的」。
+ *
+ * 现在改成本地草稿：输入期间只改 draft，失焦（或回车）才 clamp 到 [min,max] 并落库；
+ * 外部值变化（首次加载）只在未聚焦时同步进 draft。
+ */
+function RuleDaysInput({ value, min, max, onCommit }: { value: number; min: number; max: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setDraft(String(value)); }, [value, focused]);
+  const commit = () => {
+    const n = Math.min(max, Math.max(min, Math.round(Number(draft)) || min));
+    setDraft(String(n));
+    if (n !== value) onCommit(n);
+  };
+  return (
+    <input
+      type="number" min={min} max={max} value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => { setFocused(false); commit(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+      className="input-neon w-16 py-0.5 px-2 text-xs text-right"
+    />
   );
 }
 
