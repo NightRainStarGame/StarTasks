@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <!-- 移动端：禁缩放由 WebView 自己管理；允许用户缩放便于小屏查看 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- CSP：比桌面宽——homework/updater 要直连 GitHub raw/API，USTB 要连校园网 -->
+    <!-- CSP：宽策略——移动端所有逻辑都跑在 WebView 里（共享 electron/*），
+         SSIO（作业同步/更新/班级）与 USTB 教务都要直连；sql-wasm 需要 wasm-unsafe-eval。
+         v1.2.18：注释里已下线的「GitHub raw/API」说法删除。 -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: http:;" />
     <title>TaskManager · StarOS</title>
   </head>

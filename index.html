@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' ws://localhost:5173 http://localhost:5173;" />
+    <!-- v1.2.18：connect-src 从开发时代的 'self' + localhost:5173 放开。
+         那份策略是 vite 热更新年代写的，SSIO 上线后一直没更新 —— 渲染层任何到
+         http://120.53.9.81:8100 的请求都会被 CSP 拦下并在控制台刷这条报错。
+         云能力已收敛到 SSIO 单源，但为了不再出现「换个地址就忘改 CSP」的循环，
+         直接与移动端对齐放行 http/https，开发服务器地址保留给 vite dev。 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: http: ws://localhost:5173 http://localhost:5173;" />
     <title>TaskManager · 课程·项目·可视化工作流</title>
   </head>
   <body class="bg-ink-base text-text-primary font-sans overflow-hidden">
