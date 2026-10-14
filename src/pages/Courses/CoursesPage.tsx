@@ -150,15 +150,17 @@ export function CoursesPage() {
               )}
             </div>
           )}
-          {!IS_MOBILE && (
-            <button
-              onClick={() => setBeikeOpen(true)}
-              className="btn-ghost"
-              title="USTB 统一身份认证扫码登录，一键导入教务课表"
-            >
-              <Shell size={14} /> 贝壳课表
-            </button>
-          )}
+          {/* v1.2.20：解除移动端隐藏。原来藏的理由是「USTB 不发 CORS 头」—— 但
+              nativeHttp 桥（v1.2.10）+ @capacitor-community/http 插件（v1.2.20 装进 APK）
+              之后请求走 OkHttp 原生通道，与 CORS 无关。手机上用「相册扫码」流程登录
+              （见 BeikeTimetable 里的提示）。 */}
+          <button
+            onClick={() => setBeikeOpen(true)}
+            className="btn-ghost"
+            title="USTB 统一身份认证扫码登录，一键导入教务课表"
+          >
+            <Shell size={14} /> 贝壳课表
+          </button>
           <button onClick={createCourse} className="btn-neon btn-neon-yellow">
             <Plus size={14} /> 新建课程
           </button>

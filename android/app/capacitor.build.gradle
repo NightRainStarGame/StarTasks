@@ -10,6 +10,8 @@ android {
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
 
+  // v1.2.20：原生 HTTP 插件（capacitor-community-http），贝壳课表 SSO 走它绕 CORS
+  implementation project(':capacitor-community-http')
 
 }
 

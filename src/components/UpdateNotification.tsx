@@ -151,6 +151,22 @@ export default function UpdateNotification({ externalTrigger }: Props) {
 
   if (!payload || !payload.hasUpdate) return null;
 
+  // v1.2.20：手机版提示卡。桌面版下面的下载/补丁/安装按钮全部依赖主进程桌面链路
+  // （child_process / NSIS / asar 补丁），在 APK 里一个都跑不通 —— 以前这里会把
+  // 桌面 UI 原样弹出来，点了就是各种报错。手机上只指路：去 设置 → 软件更新 安装。
+  if (typeof window !== 'undefined' && !!(window as any).__MOBILE__) {
+    return (
+      <div className="fixed bottom-4 left-4 right-4 z-[70] p-3 rounded-lg border border-neon-green/40 bg-ink-base/95 shadow-neon-green flex items-center gap-3 md:hidden">
+        <Sparkles size={16} className="text-neon-green shrink-0" />
+        <div className="flex-1 text-xs">
+          <div className="font-bold text-neon-green">发现新版本 v{payload.latestVersion}</div>
+          <div className="text-text-dim">到「设置 → 软件更新」下载并安装</div>
+        </div>
+        <button onClick={() => setPayload(null)} className="btn-ghost text-xs px-2 py-1" title="本次忽略">知道了</button>
+      </div>
+    );
+  }
+
   const close = () => setPayload(null);
   const ignore = async () => {
     if (payload.latestVersion) await window.taskAPI.updater.skipVersion(payload.latestVersion);

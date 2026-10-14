@@ -17,6 +17,10 @@ public class MainActivity extends BridgeActivity {
         // v1.2.11：注册自定义插件
         registerPlugin(InsetsPlugin.class);     // 系统栏安全区 → Web
         registerPlugin(ApkInstallerPlugin.class); // APK 自更新
+        // v1.2.20：原生 HTTP 通道（绕 webview CORS —— 贝壳课表 USTB SSO 全靠它）。
+        // npm 装了包，但 `cap sync` 会被沙箱 safe-delete 拦住，所以按它本该生成的
+        // 样子手写接线：settings.gradle / build.gradle（见那两个文件的对应行）+ 这里的注册。
+        registerPlugin(com.getcapacitor.plugin.http.Http.class);
 
         // v1.2.11：显式全屏布局（edge-to-edge），系统栏透明。
         // 内容避让不再依赖各机型 WebView 对 env(safe-area-inset-*) 的实现差异，

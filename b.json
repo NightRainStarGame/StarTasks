@@ -1,0 +1,1 @@
+{"app":"bigfish","model":"deepseek-flash","stream":true,"max_tokens":30,"messages":[{"role":"user","content":"这张图是什么颜色","image":["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAdSURBVDhPY5BLufOfEsyALkAqHjVg1IBRAwaLAQCmdV0fbAluewAAAABJRU5ErkJggg=="]}]}

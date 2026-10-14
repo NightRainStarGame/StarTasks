@@ -256,6 +256,15 @@ export default function BeikeTimetable() {
             <div className="text-xs font-mono text-center">
               {qrState === 'loading' && <span className="text-text-dim">正在生成二维码…</span>}
               {qrState === 'waiting' && <span className="text-neon-green">请使用微信扫描二维码</span>}
+              {/* v1.2.20：手机上没法用另一台设备扫自己的屏幕 —— 但微信「扫一扫」支持
+                  从相册选图识别二维码，所以流程是：长按保存这张二维码 → 微信扫一扫 →
+                  相册选取 → 在本机确认登录。登录态由下面已有的轮询接上，无需改动。 */}
+              {qrState === 'waiting' && typeof window !== 'undefined' && !!(window as any).__MOBILE__ && (
+                <div className="mt-2 p-2 rounded border border-neon-yellow/30 bg-neon-yellow/10 text-neon-yellow text-left leading-relaxed">
+                  手机上这样操作：长按上面的二维码「保存到相册」→ 打开微信「扫一扫」→
+                  点右下角「相册」选这张图 → 在本机确认登录，此窗口会自动继续。
+                </div>
+              )}
               {qrState === 'scanned' && <span className="text-neon-yellow">已扫码，请在手机上确认登录</span>}
               {qrState === 'expired' && <span className="text-neon-danger">二维码已过期</span>}
               {qrState === 'error' && <span className="text-neon-danger">{qrError || '出错了'}</span>}

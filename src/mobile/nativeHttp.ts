@@ -28,7 +28,11 @@ interface CapHttpPlugin {
 
 function pickPlugin(): CapHttpPlugin | null {
   const g = globalThis as any;
-  const cap = g.Capacitor?.Plugins?.CapacitorHttp ?? g.CapacitorHttp;
+  // v1.2.20：补上 `Plugins.Http` —— 原生侧注册名是 "Http"（Http.java 的 @CapacitorPlugin(name="Http")），
+  // "CapacitorHttp" 只是它 JS 包装层的名字（我们只装原生侧、不打包那个 npm 包的 JS）。
+  // 以前只认 CapacitorHttp → 插件装了也永远探测不到，hasNativeHttp() 恒 false，
+  // USTB/SSIO 请求全部静默回落到被 CORS 拦的 webview fetch。
+  const cap = g.Capacitor?.Plugins?.Http ?? g.Capacitor?.Plugins?.CapacitorHttp ?? g.CapacitorHttp;
   return cap && typeof cap.request === 'function' ? (cap as CapHttpPlugin) : null;
 }
 

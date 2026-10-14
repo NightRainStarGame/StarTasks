@@ -35,10 +35,28 @@ export default function Layout() {
         if (alive) setAppInfo(info);
       } catch { /* 浏览器 mock 不可用时忽略 */ }
 
-      // 移动端：APK 更新由设置页的 MobileUpdatePanel 负责（走原生插件下载安装）。
-      // 这里跳过桌面通道 —— 桌面链路的 install 依赖 child_process.spawn，
-      // 在 APK 的 electron-shim 下必抛错，让它跑只会得到「检查到更新却装不了」。
-      if ((window as any).__MOBILE__) return;
+      // v1.2.20：移动端不再「完全跳过」。以前这里直接 return —— 更新入口只有
+      // 设置页深处那一个，用户感知不到（「更新没内置」的直接原因）。
+      // 现在启动后静默查一次 APK 清单：有新版本 → setUpdateInfo →
+      // 侧栏「设置」亮 NEW 徽章 + UpdateNotification 弹手机版提示卡。
+      // 桌面通道仍然跳过（install 依赖 child_process，在 APK 下必抛）。
+      if ((window as any).__MOBILE__) {
+        await new Promise((r) => setTimeout(r, 6000));
+        if (!alive) return;
+        try {
+          const { checkAndroidUpdate } = await import('@/mobile/apkUpdater');
+          const r = await checkAndroidUpdate();
+          if (alive && r?.ok && r?.hasUpdate && r.latest) {
+            setUpdateInfo({
+              ok: true,
+              hasUpdate: true,
+              latestVersion: r.latest.version,
+              notes: r.latest.notes || undefined,
+            } as any);
+          }
+        } catch { /* 静默：查不到更新不打扰 */ }
+        return;
+      }
 
       // v1.2.10：首屏不再立刻打网络。以前挂载即并发请求 3 个更新源（单源超时 15s），
       // 和首屏渲染抢资源，直接拖慢冷启动。主进程 8s 后会做同样的检查并通过
