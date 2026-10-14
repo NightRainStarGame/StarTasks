@@ -1,15 +1,15 @@
 {
-  "version": "1.2.19",
-  "notes": "# TaskManager v1.2.19\r\n\r\n> 紧凑修复版：修掉应用内的 CSP 报错，并把 1.2.18 重发后无法覆盖的下载通道一并捋直。\r\n\r\n## 修复：应用内 CSP 报错（连接被拒）\r\n\r\n安装包里的安全策略（CSP）还停留在开发阶段——只允许连接本机调试服务器，\r\n没有放行自建 SSIO 云（`120.53.9.81:8100`）。受此影响，部分联网功能在应用内\r\n会报连接策略错误。已更新策略并覆盖桌面与 Android 两端。\r\n\r\n## 说明：为什么 1.2.18 之后紧跟着发 1.2.19\r\n\r\n1.2.18 曾重发过一次（修增量更新退出无反应的根因），但 SSIO 的发行记录不支持\r\n删除或覆盖——**网站直链下载到的仍是 1.2.18 首发版**（其补丁助手有缺陷：\r\n增量更新首次应用会失败，需改用完整安装包）。发布 1.2.19 后所有下载通道\r\n（应用内更新 / 官网直链）统一指向无此问题的版本。\r\n\r\n如果你是 1.2.18 首发版用户：直接应用内更新到 1.2.19 即可（会走完整安装包）。\r\n\r\n## 其它\r\n\r\n- Android versionCode 14\r\n- 移动端 CSP 注释清理（删除已下线通道的过时说明）\r\n\r\n## 升级提醒\r\n\r\n- 桌面 1.2.18（重发版）：应用内**增量补丁**升级，约 22 MB\r\n- 桌面 1.2.17 / 1.2.18 首发版：应用内完整安装包升级\r\n- Android ≤1.2.17：需手动安装本版 APK 一次（老版本更新通道断裂）；1.2.18 可应用内更新",
-  "url": "ssio:release:277fbc8e-5838-415c-bcc2-456b07ddd6b9",
-  "page": "https://github.com/NightRainStarGame/USTBTaskManager/releases/tag/v1.2.19",
-  "sha256": "3e1a21476dbc83fe6ad4c5217daf5f03c7c46360b315d4baccadd3bed6878d03",
-  "size": 97531193,
-  "fileName": "TaskManager-Setup-1.2.19.exe",
+  "version": "1.2.20",
+  "notes": "# TaskManager v1.2.20\r\n\r\n> 本次是**移动端补课**：贝壳课表在手机上开通、更新不再埋在设置深处，外加一套防复发机制。\r\n\r\n## 一、贝壳课表（USTB 统一身份扫码导入）在手机上可用了\r\n\r\n以前手机上这个按钮被藏起来的理由是「USTB 不发 CORS 头」——但原生 HTTP 通道\r\n（v1.2.10 就写好了）本来就是为了绕过 CORS 存在的，通道通了之后按钮一直没打开。\r\n本次把通道真正接完：\r\n\r\n- `@capacitor-community/http` 原生插件装进 APK（此前通道是半成品：桥写了、插件没装）\r\n- 课程页「贝壳课表」按钮在手机上显示\r\n- 手机上没法扫自己的屏幕，新流程：**长按二维码保存到相册 → 微信「扫一扫」→ 相册选图 → 本机确认**，\r\n  登录后其余导入流程与桌面一致\r\n\r\n## 二、更新看得见了\r\n\r\n以前手机上「检查更新」只有一个入口：设置 → 软件更新，埋得很深，启动时也从不去查。\r\n现在：\r\n\r\n- 启动后自动检查 APK 更新（静默，查不到不打扰）\r\n- 有新版本：**侧栏「设置」亮 NEW 徽章** + 底部弹出提示卡「发现新版本 → 到设置安装」\r\n- 不再弹出桌面的下载/安装按钮（那些在手机上点了只会报错）\r\n\r\n## 三、防复发机制（给开发者）\r\n\r\n新增 `npm test` 里的移动端门审计（`test:mobile-gates`）：\r\n\r\n- 任何把功能藏出移动端的代码门，必须在旁边写明理由，否则测试红\r\n- 本次修复的每一项（贝壳按钮、插件接线、启动检查、手机版提示卡）都有回归钉\r\n\r\n## 升级提醒\r\n\r\n- Android：versionCode 15；老版本（≤1.2.16）需手动安装本 APK 一次\r\n- 桌面：无功能变化，增量补丁照常",
+  "url": "https://github.com/NightRainStarGame/USTBTaskManager/releases/download/v1.2.20/TaskManager-Setup-1.2.20.exe",
+  "page": "https://github.com/NightRainStarGame/USTBTaskManager/releases/tag/v1.2.20",
+  "sha256": "67c97f87189b7f8889e7029a584f7c0e4556f62a602ea3787b109e83c1de94ae",
+  "size": 98448238,
+  "fileName": "TaskManager-Setup-1.2.20.exe",
   "releasedAt": "2026-10-02T15:10:00.000Z",
   "releaseDate": "2026-10-13T02:33:08.068Z",
-  "asarSha256": "c79843582d4a0ee5a7e782076ee0f4d35c9eed1ca038412fff80f83d21530998",
-  "asarSize": 76169404,
+  "asarSha256": "494aa9bb3e689e3f4e0d9de6ff88518f93283c7e8d1bd657e88b214f5b6554c9",
+  "asarSize": 77310662,
   "patches": [
     {
       "fromVersion": "1.2.18",
@@ -25,15 +25,18 @@
     }
   ],
   "android": {
-    "version": "1.2.19",
-    "versionCode": 14,
-    "url": "ssio:release:d2952f5e-5aa7-4fdd-ac46-0111a1eac31e",
+    "version": "1.2.20",
+    "versionCode": 15,
+    "url": "ssio:release:6ac5d5aa-fdd8-45a3-9f1c-b64726e6aa04",
     "mirrors": [],
-    "sha256": "eba4de76005a6c1dff6baa4f62c424e433885c30ea47b092bc4ae6a1056536eb",
-    "size": 4714666,
-    "fileName": "TaskManager-1.2.19.apk",
+    "sha256": "6fc83441a3d0d0e1cd6f8930ce12458db4f87d633b9119a90211f386913481a2",
+    "size": 4723750,
+    "fileName": "TaskManager-1.2.20.apk",
     "page": null
   },
-  "urlMirrors": [],
-  "releaseId": "277fbc8e-5838-415c-bcc2-456b07ddd6b9"
+  "urlMirrors": [
+    "https://raw.githubusercontent.com/NightRainStarGame/USTBTaskManager/main/leastversion/TaskManager-Setup-1.2.20.exe",
+    "https://cdn.jsdelivr.net/gh/NightRainStarGame/USTBTaskManager@main/leastversion/TaskManager-Setup-1.2.20.exe"
+  ],
+  "releaseId": null
 }
