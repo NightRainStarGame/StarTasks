@@ -86,6 +86,19 @@ const settingsGradle = read('android/capacitor.settings.gradle');
 check('B3 settings.gradle 含 capacitor-community-http', settingsGradle.includes('capacitor-community-http'));
 const appGradle = read('android/app/capacitor.build.gradle');
 check('B3 app 依赖 capacitor-community-http', appGradle.includes("project(':capacitor-community-http')"));
+// B3b：AGP8 要求插件库声明 namespace；@capacitor-community/http 1.4.1 没带，
+// node_modules 里的补丁在 npm 重装后会丢 —— 这里盯着，丢了就红。
+const httpGradle = (() => {
+  try { return fs.readFileSync(path.join(ROOT, 'node_modules/@capacitor-community/http/android/build.gradle'), 'utf8'); }
+  catch { return ''; }
+})();
+check('B3b http 插件 build.gradle 带 namespace 补丁', httpGradle.includes("namespace 'com.getcapacitor.plugin.http'"));
+// B3c：AGP8 禁止库 manifest 带 package 属性（上游 bug 值 com.getcapacitor.http.http），同样会被 npm 重装冲掉
+const httpManifest = (() => {
+  try { return fs.readFileSync(path.join(ROOT, 'node_modules/@capacitor-community/http/android/src/main/AndroidManifest.xml'), 'utf8'); }
+  catch { return ''; }
+})();
+check('B3c http 插件 manifest 无 package 属性', !/package\s*=/.test(httpManifest));
 
 const layout = read('src/components/Layout.tsx');
 check('B4 Layout 移动端启动检查 APK 更新', /__MOBILE__[\s\S]{0,700}checkAndroidUpdate/.test(layout));
