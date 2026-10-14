@@ -1,7 +1,7 @@
 {
   "version": "1.2.20",
   "notes": "# TaskManager v1.2.20\r\n\r\n> 本次是**移动端补课**：贝壳课表在手机上开通、更新不再埋在设置深处，外加一套防复发机制。\r\n\r\n## 一、贝壳课表（USTB 统一身份扫码导入）在手机上可用了\r\n\r\n以前手机上这个按钮被藏起来的理由是「USTB 不发 CORS 头」——但原生 HTTP 通道\r\n（v1.2.10 就写好了）本来就是为了绕过 CORS 存在的，通道通了之后按钮一直没打开。\r\n本次把通道真正接完：\r\n\r\n- `@capacitor-community/http` 原生插件装进 APK（此前通道是半成品：桥写了、插件没装）\r\n- 课程页「贝壳课表」按钮在手机上显示\r\n- 手机上没法扫自己的屏幕，新流程：**长按二维码保存到相册 → 微信「扫一扫」→ 相册选图 → 本机确认**，\r\n  登录后其余导入流程与桌面一致\r\n\r\n## 二、更新看得见了\r\n\r\n以前手机上「检查更新」只有一个入口：设置 → 软件更新，埋得很深，启动时也从不去查。\r\n现在：\r\n\r\n- 启动后自动检查 APK 更新（静默，查不到不打扰）\r\n- 有新版本：**侧栏「设置」亮 NEW 徽章** + 底部弹出提示卡「发现新版本 → 到设置安装」\r\n- 不再弹出桌面的下载/安装按钮（那些在手机上点了只会报错）\r\n\r\n## 三、防复发机制（给开发者）\r\n\r\n新增 `npm test` 里的移动端门审计（`test:mobile-gates`）：\r\n\r\n- 任何把功能藏出移动端的代码门，必须在旁边写明理由，否则测试红\r\n- 本次修复的每一项（贝壳按钮、插件接线、启动检查、手机版提示卡）都有回归钉\r\n\r\n## 升级提醒\r\n\r\n- Android：versionCode 15；老版本（≤1.2.16）需手动安装本 APK 一次\r\n- 桌面：无功能变化，增量补丁照常",
-  "url": "https://github.com/NightRainStarGame/USTBTaskManager/releases/download/v1.2.20/TaskManager-Setup-1.2.20.exe",
+  "url": "ssio:release:42facc8c-ad2b-4e96-b3a4-ecd6b3f65bf2",
   "page": "https://github.com/NightRainStarGame/USTBTaskManager/releases/tag/v1.2.20",
   "sha256": "67c97f87189b7f8889e7029a584f7c0e4556f62a602ea3787b109e83c1de94ae",
   "size": 98448238,
@@ -12,16 +12,17 @@
   "asarSize": 77310662,
   "patches": [
     {
-      "fromVersion": "1.2.18",
-      "url": "ssio:file:25c44782-6ad8-429a-963a-77947daab248",
+      "fromVersion": "1.2.19",
+      "toVersion": "1.2.20",
+      "url": "ssio:file:07ca8361-db06-402d-a99a-b5e8ff328804",
       "urlMirrors": [],
-      "sha256": "f39bf86105636a116ca1ebdc8df3e259f3eb55a4f74ba2972d32217a1b4a62fb",
-      "size": 23393489,
-      "baseAsarSha256": "4e7d125542f3a35db666c66130a0e5deccdf0e5bac6b67b90be1367371e520e4",
-      "baseAsarSize": 76168891,
-      "appAsarSha256": "c79843582d4a0ee5a7e782076ee0f4d35c9eed1ca038412fff80f83d21530998",
-      "appAsarSize": 76169404,
-      "createdAt": "2026-10-13T02:31:58.219Z"
+      "sha256": "696e2ed3ca09fffd88b02da133946f7b44806c49ada28b333f201ef95a4502e8",
+      "size": 23669299,
+      "baseAsarSha256": "c79843582d4a0ee5a7e782076ee0f4d35c9eed1ca038412fff80f83d21530998",
+      "baseAsarSize": 76169404,
+      "appAsarSha256": "494aa9bb3e689e3f4e0d9de6ff88518f93283c7e8d1bd657e88b214f5b6554c9",
+      "appAsarSize": 77310662,
+      "createdAt": "2026-10-14T06:05:32.195Z"
     }
   ],
   "android": {
@@ -34,9 +35,6 @@
     "fileName": "TaskManager-1.2.20.apk",
     "page": null
   },
-  "urlMirrors": [
-    "https://raw.githubusercontent.com/NightRainStarGame/USTBTaskManager/main/leastversion/TaskManager-Setup-1.2.20.exe",
-    "https://cdn.jsdelivr.net/gh/NightRainStarGame/USTBTaskManager@main/leastversion/TaskManager-Setup-1.2.20.exe"
-  ],
+  "urlMirrors": [],
   "releaseId": null
 }
