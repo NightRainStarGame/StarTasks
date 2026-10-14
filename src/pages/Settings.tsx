@@ -736,7 +736,8 @@ export default function SettingsPage() {
               </>
             )}
           </div>
-          <div className="flex gap-2">
+          {/* v1.2.21：手机窄屏下这排按钮会被压成竖排一字一行（用户实机截图）→ 允许换行 */}
+          <div className="flex flex-wrap gap-2 shrink-0">
             {userProfile?.username ? (
               <button onClick={() => openAcctModal('password')} className="btn-ghost"><Lock size={14} /> {userProfile.password_hash ? '修改密码' : '设置密码'}</button>
             ) : (
@@ -1164,6 +1165,10 @@ export default function SettingsPage() {
           </div>
         </Row>
 
+        {/* v1.2.21：更新源管理是桌面专属（APK 只有 SSIO 一个内置源、不可编辑）。
+            用户实机截图里这块在手机上把「添加源/保存源」压成竖排一字一行，还暴露了
+            一堆桌面概念（APIKey/直链镜像）。手机端只保留下面的 MobileUpdatePanel。 */}
+        {!IS_MOBILE && (
         <Row label="更新源">
           <div className="space-y-2">
             {/* 源列表（紧凑） */}
@@ -1247,6 +1252,7 @@ export default function SettingsPage() {
             </details>
           </div>
         </Row>
+        )}
 
         {!IS_MOBILE && (
         <Row label="关闭按钮行为">
@@ -1539,11 +1545,19 @@ function Section({ icon, title, children, id, highlight }: any) {
   );
 }
 
+/**
+ * 设置页的一行「标签 + 控件」。
+ *
+ * v1.2.21（用户实机截图逼出来的）：原来是 `flex items-center` + 标签固定 `w-32 shrink-0`。
+ * 手机上（~390px）标签列就吃掉三分之一宽，右侧控件被压到不足一字宽 ——
+ * 于是「设置账号密码」这类按钮变成**竖排的一个字一行**，整屏看起来像坏掉。
+ * 现在窄屏纵向堆叠（标签一行、控件一行），≥sm 才恢复左右布局。
+ */
 function Row({ label, children }: any) {
   return (
-    <div className="flex items-center gap-4 py-2 border-b border-neon-green/5 last:border-b-0">
-      <span className="text-sm text-text-secondary w-32 shrink-0">{label}</span>
-      <div className="flex-1">{children}</div>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 py-2 border-b border-neon-green/5 last:border-b-0">
+      <span className="text-sm text-text-secondary sm:w-32 sm:shrink-0">{label}</span>
+      <div className="w-full sm:flex-1 sm:min-w-0">{children}</div>
     </div>
   );
 }

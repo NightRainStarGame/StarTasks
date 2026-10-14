@@ -82,6 +82,20 @@ const nativeHttp = read('src/mobile/nativeHttp.ts');
 check('B3 nativeHttp 探测 Plugins.Http', nativeHttp.includes('Plugins?.Http'));
 const mainAct = read('android/app/src/main/java/com/lasarac/taskmanager/MainActivity.java');
 check('B3 MainActivity 注册 Http 插件', /registerPlugin\(com\.getcapacitor\.plugin\.http\.Http\.class\)/.test(mainAct));
+// B3a：注册顺序！BridgeActivity.onCreate 内部就 load()（消费 initialPlugins），
+// super.onCreate() 之后再 registerPlugin 完全无效 —— 三个插件会集体失联，
+// 症状是「APK 自更新报未内置插件」+「nativeHttp 探测不到」。这条断言防它复发。
+// 注意：必须剥掉注释再比位置，否则注释里提到的 super.onCreate 会成为假锚点。
+const mainCode = mainAct.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+const firstSuper = mainCode.indexOf('super.onCreate(');
+const firstReg = mainCode.indexOf('registerPlugin(');
+check('B3a 插件注册在 super.onCreate() 之前', firstReg >= 0 && firstReg < firstSuper,
+  firstReg >= 0 && firstSuper >= 0 ? ('registerPlugin@' + firstReg + ' super@' + firstSuper) : '未找到锚点');
+check('B3a 三个插件都在 super.onCreate() 之前注册',
+  ['InsetsPlugin', 'ApkInstallerPlugin', 'plugin.http.Http'].every((n) => {
+    const idx = mainCode.indexOf(n);
+    return idx > 0 && idx < firstSuper;
+  }));
 const settingsGradle = read('android/capacitor.settings.gradle');
 check('B3 settings.gradle 含 capacitor-community-http', settingsGradle.includes('capacitor-community-http'));
 const appGradle = read('android/app/capacitor.build.gradle');
