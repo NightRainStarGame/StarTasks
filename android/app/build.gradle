@@ -21,8 +21,8 @@ android {
         // v1.2.18 = 13（班级/输入/UI 修复批次）。1.2.18 首发时漏提了这里（仍是 12），
         // 导致 Android 1.2.17 用户 versionCode 相同、判定「已是最新」收不到更新，
         // 已重发 android 段纠正。⚠️ 发版清单：versionCode 必须随版本一起提！
-        versionCode 16
-        versionName "1.2.21"
+        versionCode 17
+        versionName "1.2.22"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -68,6 +68,11 @@ export default function BeikeTimetable() {
     setQrError('');
     setQrState('loading');
     setMsg(null);
+    // v1.2.22：**先开弹窗**再发请求。以前是「拿到二维码才开弹窗」，而错误只显示在弹窗
+    // 内部 —— 于是 qrStart 一失败（校园网/SSO 报错/CORS/通道异常），弹窗永远不打开，
+    // 错误被关在看不见的地方，用户看到的只是「点了没反应的死按钮」（实机反馈）。
+    // 现在点开就有反馈：生成中 → 二维码 / 或具体失败原因（带 HTTP 状态与地址）。
+    setQr({ sessionId: '', image: '' });
     try {
       const r = await window.taskAPI.ustb.qrStart();
       setQr({ sessionId: r.sessionId, image: r.qrImage });
@@ -98,8 +103,25 @@ export default function BeikeTimetable() {
         }
       }, 2000);
     } catch (err: any) {
+      const detail = err?.message ?? String(err);
       setQrState('error');
-      setQrError(err?.message ?? String(err));
+      setQrError(detail);
+      // 「请求冲突」等文案是 USTB SSO 自己的返回（我们代码里没有这些字）。
+      // 最常见真因：手机不在校园网 —— SSO 网关在校外会返回业务错误而不是超时，
+      // 错误文本对用户毫无指向性，所以补一句可执行的提示。
+      const hint = /请求冲突|冲突|timeout|超时|ETIMEDOUT|ENOTFOUND|NetworkError|Failed to fetch/i.test(detail)
+        ? '（贝壳课表需要校园网环境：请确认手机已连接校园 WiFi 后重试）'
+        : '';
+      // 落诊断日志：用户可从「设置 → 输入诊断 → 导出日志」把这段发给我们，
+      // 否则 WebView 的 console 在手机上根本拿不到（webview console 不落盘）。
+      try {
+        window.taskAPI.diag.append({
+          kind: 'beike-qr', at: Date.now(), detail, hint,
+          ua: navigator.userAgent, mobile: !!(window as any).__MOBILE__,
+        });
+      } catch { /* 诊断通道不可用就算了 */ }
+      // 弹窗关掉后原因也不能丢：顶部再挂一条（同 Settings 的 msg 样式）
+      setMsg({ kind: 'err', text: `扫码登录失败：${detail}${hint}` });
     }
   };
 
@@ -250,9 +272,16 @@ export default function BeikeTimetable() {
       {qr && (
         <Modal title="微信扫码登录 · 北科大统一身份认证" onClose={closeQr}>
           <div className="flex flex-col items-center gap-4">
-            <div className="p-3 bg-white rounded-lg">
-              <img src={qr.image} alt="登录二维码" className="w-56 h-56" />
-            </div>
+            {/* 图片为空说明还在生成（此时显示占位而不是破图） */}
+            {qr.image ? (
+              <div className="p-3 bg-white rounded-lg">
+                <img src={qr.image} alt="登录二维码" className="w-56 h-56" />
+              </div>
+            ) : qrState === 'error' ? null : (
+              <div className="w-56 h-56 rounded-lg border border-neon-green/20 grid place-items-center text-xs font-mono text-text-dim">
+                正在生成二维码…
+              </div>
+            )}
             <div className="text-xs font-mono text-center">
               {qrState === 'loading' && <span className="text-text-dim">正在生成二维码…</span>}
               {qrState === 'waiting' && <span className="text-neon-green">请使用微信扫描二维码</span>}

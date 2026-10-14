@@ -101,7 +101,8 @@ export async function nativeFetch(input: RequestInfo | URL, init?: RequestInit):
       method,
       headers,
       data,
-      // 上层用 redirect:'manual' 自己跟随并吸收 Cookie，原生层必须同步<｜hy_place▁holder▁no▁813｜>行为
+      // 上层用 redirect:'manual' 自己跟随并吸收 Cookie，原生层必须同步该行为：
+      // SSO 入口那一步靠 302 的 Location 头抽 lck，若原生层自动跟随就永远拿不到。
       disableRedirects: init?.redirect === 'manual',
     });
     return toResponse(res);

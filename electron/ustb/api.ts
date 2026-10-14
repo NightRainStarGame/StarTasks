@@ -65,8 +65,12 @@ export async function startQrLogin(ctx: UstbContext): Promise<void> {
   }
   const location = entryRes.headers.get('location') ?? '';
   const lck = new URL(location.replace('/#/', '/')).searchParams.get('lck');
-  if (!lck) throw new Error('未能获取登录上下文（lck）');
+  if (!lck) {
+    await ssoTrace('sso-entry', entry.toString(), entryRes, { note: 'no lck in location' });
+    throw new Error('未能获取登录上下文（lck）—— 校园网环境或 SSO 会话异常');
+  }
   ctx.lck = lck;
+  await ssoTrace('sso-entry-ok', entry.toString(), entryRes, { lck: lck.slice(0, 12) });
 
   // 2) 查询可用认证方式（建立 SSO 会话）
   const methodsRes = await request(ctx.jar, SSO_QUERY_AUTH_METHODS, {
@@ -75,8 +79,10 @@ export async function startQrLogin(ctx: UstbContext): Promise<void> {
   });
   const methods = await readJson(methodsRes);
   if (!methods || methods.code !== 200) {
+    await ssoTrace('sso-methods', SSO_QUERY_AUTH_METHODS, methodsRes, { code: methods?.code });
     throw new Error(`查询认证方式失败：${methods?.message ?? `HTTP ${methodsRes.status}`}`);
   }
+  await ssoTrace('sso-methods-ok', SSO_QUERY_AUTH_METHODS, methodsRes);
 
   // 3) 获取微信扫码认证信息（appId / returnUrl / randomToken）
   const qrRes = await request(ctx.jar, SSO_QR_INFO, {
@@ -85,8 +91,10 @@ export async function startQrLogin(ctx: UstbContext): Promise<void> {
   });
   const qrInfo = await readJson(qrRes);
   if (!qrInfo || String(qrInfo.code) !== '200') {
+    await ssoTrace('sso-qrinfo', SSO_QR_INFO, qrRes, { code: qrInfo?.code, message: qrInfo?.message });
     throw new Error(`获取二维码信息失败：${qrInfo?.message ?? `HTTP ${qrRes.status}`}`);
   }
+  await ssoTrace('sso-qrinfo-ok', SSO_QR_INFO, qrRes);
   ctx.appId = qrInfo.data.appId;
   ctx.returnUrl = qrInfo.data.returnUrl;
   ctx.randomToken = qrInfo.data.randomToken;
@@ -159,6 +167,39 @@ export async function completeQrLogin(ctx: UstbContext, passcode: string): Promi
     await request(ctx.jar, decodeLocationValue(locationValue[1]));
   }
   return getByytUserInfo(ctx);
+}
+
+/**
+ * v1.2.22：把 SSO 每一步的原始响应记进诊断日志。
+ *
+ * 为什么加：手机 WebView 的 console 拿不到，出错时用户只看到一句 USTB 的业务文案
+ * （如「请求冲突」），既不知道卡在哪一步、也不知道 HTTP 状态与响应体 ——
+ * 现场无法判断是「不在校园网」「会话被顶」还是「接口改了」。
+ * 现在每步都往 %TMP%\taskmanager-beike.log 追加一条（含步骤名、URL、HTTP 状态、
+ * 响应体前 400 字），把这文件发给开发者即可定位。
+ */
+async function ssoTrace(step: string, url: string, res: Response | null, extra?: unknown): Promise<void> {
+  try {
+    const rec: Record<string, unknown> = {
+      at: new Date().toISOString(),
+      step,
+      url: url.slice(0, 160),
+      status: res?.status ?? 0,
+      location: res?.headers?.get('location')?.slice(0, 200) ?? '',
+      extra: extra ?? null,
+    };
+    if (res) {
+      // body 只能读一次：克隆一份给日志，原响应留给调用方
+      try { rec.body = (await res.clone().text() || '').slice(0, 400); } catch { rec.body = '<unreadable>'; }
+    }
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    fs.appendFileSync(
+      path.join(os.tmpdir(), 'taskmanager-beike.log'),
+      JSON.stringify(rec) + '\n',
+    );
+  } catch { /* 诊断不能影响主流程 */ }
 }
 
 // ==================== BYYT 教务系统接口 ====================
