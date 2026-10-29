@@ -1,0 +1,48 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "StarTasks 主窗口默认能力：核心 IPC + SQL 数据层 + 网络 + 文件 + 对话框 + 通知 + 外部打开",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:window:allow-minimize",
+    "core:window:allow-unminimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-focus",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "sql:default",
+    "sql:allow-execute",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "http://*:*/*" },
+        { "url": "https://*:*/*" },
+        { "url": "http://*/*" },
+        { "url": "https://*/*" },
+        { "url": "http://*" },
+        { "url": "https://*" },
+        { "url": "http://120.53.9.81:8100/*" },
+        { "url": "https://nrsc.games/*" },
+        { "url": "https://*.ustb.edu.cn/*" }
+      ]
+    },
+    "dialog:default",
+    "notification:default",
+    "opener:default",
+    "fs:default",
+    { "identifier": "fs:allow-read-text-file", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-write-text-file", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-read-file", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-write-file", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-exists", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-mkdir", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-remove", "allow": [{ "path": "**" }] },
+    { "identifier": "fs:allow-read-dir", "allow": [{ "path": "**" }] }
+  ]
+}

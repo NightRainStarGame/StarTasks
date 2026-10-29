@@ -1,0 +1,30 @@
+[package]
+name = "startasks"
+version = "2.0.0"
+description = "StarTasks Tauri 2 双端壳"
+authors = ["豆芽"]
+edition = "2021"
+
+[lib]
+name = "startasks_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-http = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+hex = "0.4"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"

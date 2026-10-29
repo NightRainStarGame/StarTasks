@@ -1,7 +1,38 @@
+# ==================== 密钥（绝不入库）====================
+.ssio-release-key
+HTML/scripts/.ssio-release-key
+.env
+.env.local
+.env.*.local
+
+# 打包工具链中间产物（体积大，不入库）
+HTML/scripts/rustup-init.exe
+HTML/scripts/gradle-*.zip
+HTML/scripts/*.log
+build-*.log
+ndk-*.log
+
 # ==================== 依赖 ====================
 node_modules/
 .restore/
 .probe/
+
+# ==================== Tauri 构建中间产物（HTML/ 结构）====================
+# 实测体积：target 10.8GB / gen(Android 工程副本) 216MB / node_modules 184MB
+# 这些是每条机器都能重新生成的，绝不能入库
+HTML/src-tauri/target/
+HTML/src-tauri/gen/
+HTML/src-tauri/target-mobile/
+HTML/**/*.so
+HTML/scripts/.strip-path
+HTML/.vite/
+HTML/build-*.log
+HTML/build-web.log
+HTML/build-apk.log
+HTML/build-win.log
+
+# IDE/助手本地状态
+.codebuddy/
 
 # ==================== 构建产物 ====================
 dist/

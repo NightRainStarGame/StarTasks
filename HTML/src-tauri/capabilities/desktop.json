@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "桌面端专属能力（全局快捷键插件在 Android/iOS 被 cfg 编空，不能放进通用能力）",
+  "windows": ["main"],
+  "platforms": ["windows", "macOS", "linux"],
+  "permissions": ["global-shortcut:default"]
+}

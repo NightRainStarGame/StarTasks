@@ -1,0 +1,787 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   主题系统（v1.1.5 引入）
+   - 用 CSS 变量定义主题色，Tailwind 通过 rgb(var(--xxx) / <alpha-value>)
+     实现 opacity 修饰符（bg-neon-green/40 等）正常工作
+   - 默认 aurora（v1.3.0）；可选：starry / ink-green / sakura / glass-dark
+     （v2：neon-green / glass-light 两个主题已按用户要求移除）
+   - 切换方法：document.documentElement.dataset.theme = 'starry'
+   ============================================================ */
+
+@layer base {
+  /* v1.3.0 默认主题：aurora 极光 —— 深空蓝黑底 + 极光青主色 + 青/紫/粉三色极光光斑 */
+  :root,
+  [data-theme="aurora"] {
+    --c-primary-rgb: 77 255 243;
+    --c-primary-bright-rgb: 159 252 255;
+    --c-primary-dim-rgb: 43 217 204;
+    --c-primary-deep-rgb: 14 156 146;
+    --c-primary: #4DFFF3;
+    --c-primary-bright: #9FFCFF;
+    --c-bg-deep: #05070F;
+    --c-bg-glow: rgba(77, 255, 243, 0.07);
+    --c-text: #E4F6F6;
+    --c-text-secondary: #7F9FB3;
+    --c-text-dim: #3F5B6E;
+    --c-ink-base-rgb: 4 7 15;
+    --c-ink-900-rgb: 8 14 26;
+    --c-ink-800-rgb: 13 21 38;
+    --c-ink-700-rgb: 19 30 52;
+    --c-ink-600-rgb: 27 41 68;
+    --c-ink-500-rgb: 36 54 87;
+    --c-warn-rgb: 255 234 0;
+    --c-warn-bright-rgb: 255 255 102;
+    --c-warn-dim-rgb: 204 186 0;
+
+    /* 深色版渐变组（极光三色：青 → 紫 → 粉） */
+    --c-grad-card: linear-gradient(135deg, rgba(77,255,243,0.055) 0%, rgba(139,124,255,0.05) 50%, rgba(255,118,203,0.04) 100%);
+    --c-grad-button: linear-gradient(180deg, rgba(77,255,243,0.16) 0%, rgba(43,217,204,0.07) 100%);
+    --c-grad-button-hover: linear-gradient(180deg, rgba(77,255,243,0.28) 0%, rgba(43,217,204,0.14) 100%);
+    --c-grad-title: linear-gradient(90deg, #4DFFF3 0%, #8B7CFF 55%, #FF76CB 100%);
+    --c-grad-status: linear-gradient(180deg, rgba(77,255,243,0.8) 0%, rgba(77,255,243,0) 100%);
+    --c-grad-divider: linear-gradient(90deg, transparent 0%, rgba(77,255,243,0.36) 42%, rgba(139,124,255,0.36) 58%, transparent 100%);
+    --c-text-strong: #F2FFFE;
+    --c-accent-glow: rgba(77, 255, 243, 0.4);
+  }
+
+  /* 霓虹绿（原默认，v1.3.0 起改为可选主题） */
+  
+  /* 墨绿主题：深墨绿底 + 玉绿主色（v2 新增）—— 低饱和护眼，夜里比纯黑柔和 */
+  [data-theme="ink-green"] {
+    --c-primary-rgb: 52 195 143;
+    --c-primary-bright-rgb: 110 231 183;
+    --c-primary-dim-rgb: 38 150 110;
+    --c-primary-deep-rgb: 24 105 76;
+    --c-primary: #34C38F;
+    --c-primary-bright: #6EE7B7;
+    --c-bg-deep: #07120E;
+    --c-bg-glow: rgba(52, 195, 143, 0.06);
+    --c-text: #DDF3E8;
+    --c-text-secondary: #7FA895;
+    --c-text-dim: #466157;
+    --c-ink-base-rgb: 7 18 14;
+    --c-ink-900-rgb: 11 26 20;
+    --c-ink-800-rgb: 16 35 27;
+    --c-ink-700-rgb: 23 47 37;
+    --c-ink-600-rgb: 31 61 48;
+    --c-ink-500-rgb: 42 77 61;
+    --c-warn-rgb: 234 211 102;
+    --c-warn-bright-rgb: 245 230 150;
+    --c-warn-dim-rgb: 186 166 70;
+  }
+
+  /* 星辉主题：青蓝荧光渐变（v1.1.5 新增） */
+  [data-theme="starry"] {
+    --c-primary-rgb: 0 212 255;
+    --c-primary-bright-rgb: 102 234 255;
+    --c-primary-dim-rgb: 0 153 204;
+    --c-primary-deep-rgb: 0 80 153;
+    --c-primary: #00D4FF;
+    --c-primary-bright: #66EAFF;
+    --c-bg-deep: #020817;
+    --c-bg-glow: rgba(0, 212, 255, 0.07);
+    --c-text: #DCEFFF;
+    --c-text-secondary: #7AA0C4;
+    --c-text-dim: #3D5C7D;
+    --c-ink-base-rgb: 2 8 23;
+    --c-ink-900-rgb: 8 16 34;
+    --c-ink-800-rgb: 13 24 45;
+    --c-ink-700-rgb: 20 34 60;
+    --c-ink-600-rgb: 28 45 77;
+    --c-ink-500-rgb: 38 58 96;
+    --c-warn-rgb: 255 234 0;
+    --c-warn-bright-rgb: 255 255 102;
+    --c-warn-dim-rgb: 204 186 0;
+  }
+
+  /* 樱花粉主题 v4（v1.2.1）：
+     浓樱粉 + 高透明液态玻璃 + 多点高对比 + 多层渐变 */
+  [data-theme="sakura"] {
+    --c-primary-rgb: 233 64 133;
+    --c-primary-bright-rgb: 249 143 194;
+    --c-primary-dim-rgb: 205 45 120;
+    --c-primary-deep-rgb: 156 34 90;
+    --c-primary: #E94085;
+    --c-primary-bright: #F98FC2;
+    --c-bg-deep: #FFD9E7;
+    --c-bg-glow: rgba(233, 64, 133, 0.14);
+    --c-text: #45202F;
+    --c-text-secondary: #8A4562;
+    --c-text-dim: #B57E98;
+    --c-ink-base-rgb: 255 244 249;
+    --c-ink-900-rgb: 255 241 247;
+    --c-ink-800-rgb: 255 231 241;
+    --c-ink-700-rgb: 252 212 230;
+    --c-ink-600-rgb: 248 185 211;
+    --c-ink-500-rgb: 241 155 192;
+    --c-warn-rgb: 178 104 0;
+    --c-warn-bright-rgb: 210 138 24;
+    --c-warn-dim-rgb: 140 82 0;
+
+    /* v1.2.1 新增：5+1 个渐变（卡片/按钮/按钮 hover/标题/状态条/分割线） */
+    --c-grad-card: linear-gradient(135deg, rgba(255,255,255,0.42) 0%, rgba(255,224,239,0.26) 50%, rgba(255,210,232,0.32) 100%);
+    --c-grad-button: linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(252,212,230,0.66) 100%);
+    --c-grad-button-hover: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,200,222,0.88) 100%);
+    --c-grad-title: linear-gradient(90deg, #C22B78 0%, #E94085 50%, #F98FC2 100%);
+    --c-grad-status: linear-gradient(180deg, rgba(233,64,133,0.85) 0%, rgba(233,64,133,0) 100%);
+    --c-grad-divider: linear-gradient(90deg, transparent 0%, rgba(233,64,133,0.42) 48%, rgba(249,143,194,0.42) 52%, transparent 100%);
+    /* 对比锚点色（hover/selected/emphasis） */
+    --c-text-strong: #2A0F1A;
+    --c-accent-glow: rgba(233, 64, 133, 0.45);
+  }
+
+  /* v1.3.0 玻璃 · 浅色（Windows 11 Fluent/Mica 风）：云母浅灰底 + Windows 蓝主色 + 白色亚克力 */
+  
+  /* v1.3.0 玻璃 · 深色（Windows 11 Fluent/Mica 风）：云母石墨底 + 浅蓝主色 + 深色亚克力 */
+  [data-theme="glass-dark"] {
+    --c-primary-rgb: 76 194 255;
+    --c-primary-bright-rgb: 153 235 255;
+    --c-primary-dim-rgb: 41 168 222;
+    --c-primary-deep-rgb: 0 120 200;
+    --c-primary: #4CC2FF;
+    --c-primary-bright: #99EBFF;
+    --c-bg-deep: #202020;
+    --c-bg-glow: rgba(76, 194, 255, 0.05);
+    --c-text: #FFFFFF;
+    --c-text-secondary: #C8C8C8;
+    --c-text-dim: #8D8D8D;
+    --c-ink-base-rgb: 32 32 32;
+    --c-ink-900-rgb: 43 43 43;
+    --c-ink-800-rgb: 54 54 54;
+    --c-ink-700-rgb: 66 66 66;
+    --c-ink-600-rgb: 78 78 78;
+    --c-ink-500-rgb: 92 92 92;
+    --c-warn-rgb: 255 220 0;
+    --c-warn-bright-rgb: 255 236 102;
+    --c-warn-dim-rgb: 204 176 0;
+
+    --c-grad-card: linear-gradient(135deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.018) 100%);
+    --c-grad-button: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.028) 100%);
+    --c-grad-button-hover: linear-gradient(180deg, rgba(76,194,255,0.17) 0%, rgba(76,194,255,0.06) 100%);
+    --c-grad-title: linear-gradient(90deg, #2492EC 0%, #4CC2FF 50%, #99EBFF 100%);
+    --c-grad-status: linear-gradient(180deg, rgba(76,194,255,0.85) 0%, rgba(76,194,255,0) 100%);
+    --c-grad-divider: linear-gradient(90deg, transparent 0%, rgba(76,194,255,0.32) 48%, rgba(153,235,255,0.32) 52%, transparent 100%);
+    --c-text-strong: #FFFFFF;
+    --c-accent-glow: rgba(76, 194, 255, 0.35);
+  }
+
+  /* v1.2.11：移动端安全区变量（Android 端由 src/mobile/insets.ts 用原生
+     WindowInsetsCompat 的真实值覆写；桌面端无插件 → 恒为 0，布局零回归）。
+     顶栏/悬浮球/抽屉等 fixed 元素必须据此避让，否则在 Android 16 的
+     edge-to-edge 下会被状态栏和手势条压住。 */
+  :root {
+    /* --sat-js 等由 src/mobile/insets.ts 写入（原生 WindowInsetsCompat 的真值） */
+    --sat-js: 0px;
+    --sab-js: 0px;
+    --sal-js: 0px;
+    --sar-js: 0px;
+    /* v1.2.11 rev2：双保险 —— 取原生值与 WebView 自带 env() 的较大者。
+       原生链路万一没来得及推（页面刚起来 / 插件异常），WebView 自己算的
+       safe-area 还能兜住底；两者都失效时才退化成 0。
+       桌面端（无插件、无 env）恒为 0 → 布局零回归。 */
+    --sat: max(var(--sat-js), env(safe-area-inset-top, 0px));
+    --sab: max(var(--sab-js), env(safe-area-inset-bottom, 0px));
+    --sal: max(var(--sal-js), env(safe-area-inset-left, 0px));
+    --sar: max(var(--sar-js), env(safe-area-inset-right, 0px));
+  }
+
+  /* v1.2.11：@xyflow/react 的缩放控制条 / 小地图默认贴视口底边，移动端会正好
+     落在手势条上（拖不到、还会误触「返回」）。统一抬起来，省得动组件代码。 */
+  .react-flow__controls,
+  .react-flow__minimap {
+    margin-bottom: var(--sab);
+    margin-left: var(--sal);
+  }
+
+  html, body, #root {
+    /* 100vh 在移动端包含系统栏且键盘弹起时不收缩 → 内容溢出被 overflow 裁掉。
+       dvh（dynamic viewport height）会随系统栏/输入法实时变化。 */
+    height: 100vh;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--c-bg-deep);
+    color: var(--c-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.4s ease, color 0.4s ease;
+    /* 移动端原生感基线（root 级一次配齐） */
+    -webkit-tap-highlight-color: transparent; /* 点按灰闪——「这是网页」最响的信号 */
+    -webkit-text-size-adjust: 100%;           /* 横屏不放大字体 */
+    overscroll-behavior: none;                /* 下拉刷新/橡皮筋不劫持应用滚动 */
+  }
+
+  /* 控件（按钮/可点区）：立即点击 + 长按不选中文本；内容文本保持可选 */
+  button, a, [role="button"], .btn-neon, .btn-ghost, .tab, .chip {
+    touch-action: manipulation;               /* 消除双击缩放判定带来的 300ms 点按延迟 */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* 输入聚焦不触发 iOS 缩放（<16px 会放大页面且不还原） */
+  input, textarea, select {
+    font-size: 16px;
+  }
+  @media (pointer: coarse) {
+    input, textarea, select { font-size: 16px; }
+  }
+
+  /* 内部滚动容器：滚动到边不链到整页 */
+  .overflow-y-auto, .overflow-auto {
+    overscroll-behavior: contain;
+  }
+
+  /* 星辉主题：body 加一层径向荧光渐变背景，比纯黑更耐看 */
+  [data-theme="starry"] body {
+    background:
+      radial-gradient(ellipse at 30% 0%, rgba(0,212,255,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 100%, rgba(0,80,153,0.12) 0%, transparent 50%),
+      var(--c-bg-deep);
+  }
+
+  /* v1.3.0 aurora：三色极光光斑背景（青 → 紫 → 粉，自左上向右下流动） */
+  [data-theme="aurora"] body {
+    background:
+      radial-gradient(ellipse at 12% -5%, rgba(77, 255, 243, 0.13) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 8%, rgba(139, 124, 255, 0.11) 0%, transparent 46%),
+      radial-gradient(ellipse at 55% 105%, rgba(255, 118, 203, 0.08) 0%, transparent 52%),
+      var(--c-bg-deep);
+  }
+
+  /* aurora：深色液态玻璃（柔和圆角 + 微渐变底 + 青色描边光） */
+  [data-theme="aurora"] .glass-panel {
+    background: var(--c-grad-card);
+    border: 1px solid rgba(77, 255, 243, 0.16);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(159, 252, 255, 0.08);
+  }
+  [data-theme="aurora"] .btn-neon {
+    background: var(--c-grad-button);
+    border: 1px solid rgba(77, 255, 243, 0.32);
+    overflow: hidden;
+    position: relative;
+  }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="aurora"] .btn-neon:hover {
+    background: var(--c-grad-button-hover);
+    border-color: rgba(77, 255, 243, 0.6);
+    box-shadow: 0 0 18px rgba(77, 255, 243, 0.18);
+  }
+}
+  [data-theme="aurora"] .btn-neon::after {
+    content: '';
+    position: absolute;
+    top: 0; left: -60%;
+    width: 40%; height: 100%;
+    background: linear-gradient(105deg, transparent, rgba(159, 252, 255, 0.22), transparent);
+    transform: translateX(-60%);
+    transition: transform 0.5s ease;
+  }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="aurora"] .btn-neon:hover::after { transform: translateX(280%); }
+}
+  [data-theme="aurora"] .input-neon {
+    background: rgba(8, 14, 26, 0.72);
+    border: 1.5px solid rgba(77, 255, 243, 0.18);
+  }
+  [data-theme="aurora"] .input-neon:focus {
+    border-color: rgba(77, 255, 243, 0.66);
+    box-shadow: 0 0 0 3px rgba(77, 255, 243, 0.12), 0 0 16px rgba(77, 255, 243, 0.1);
+  }
+  [data-theme="aurora"] ::selection { background: rgb(var(--c-primary-rgb) / 0.28); }
+  [data-theme="aurora"] *::-webkit-scrollbar-thumb { background: rgba(77, 255, 243, 0.28); border-radius: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="aurora"] *::-webkit-scrollbar-thumb:hover { background: rgba(77, 255, 243, 0.5); }
+}
+
+  /* ================= v1.3.0 玻璃主题（Windows 11 Fluent/Mica）=================
+     - body：云母质感底（大范围柔和径向光，不动、不闪，模拟 Mica 材质）
+     - .glass-panel：亚克力（Acrylic）——半透明 + blur + saturate + 顶部高光描边
+     - .btn-neon/.input-neon：Fluent 控件风（方角 6px、无霓虹光晕、hover 提亮） */
+    [data-theme="glass-dark"] body {
+    background:
+      radial-gradient(ellipse at 22% 0%, rgba(76,194,255,0.055) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 100%, rgba(255,255,255,0.03) 0%, transparent 45%),
+      var(--c-bg-deep);
+  }
+
+    [data-theme="glass-dark"] .glass-panel {
+    background: var(--c-grad-card);
+    backdrop-filter: blur(30px) saturate(140%);
+    -webkit-backdrop-filter: blur(30px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.38),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+  }
+    [data-theme="glass-dark"] .btn-neon {
+    background: var(--c-grad-button);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="glass-dark"] .btn-neon:hover {
+    background: var(--c-grad-button-hover);
+    border-color: rgba(76, 194, 255, 0.65);
+    box-shadow: 0 2px 8px rgba(76, 194, 255, 0.15);
+  }
+}
+  [data-theme="glass-dark"] .btn-neon:active { transform: translateY(0) scale(0.98); }
+
+      [data-theme="glass-dark"] .input-neon {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  [data-theme="glass-dark"] .input-neon:focus {
+    border-color: #4CC2FF;
+    box-shadow: 0 0 0 1px #4CC2FF, 0 2px 6px rgba(76, 194, 255, 0.14);
+  }
+
+    [data-theme="glass-dark"] ::selection { background: rgb(var(--c-primary-rgb) / 0.30); color: #06283C; }
+
+  /* Fluent 风：滚动条更收敛（细 + 半透明灰） */
+  @media (hover: hover) and (pointer: fine) {
+  }
+  [data-theme="glass-dark"] *::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 6px; }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="glass-dark"] *::-webkit-scrollbar-thumb:hover { background: rgba(76, 194, 255, 0.55); }
+}
+
+  /* 荧光光晕在 Fluent 风下收敛为柔和小阴影 */
+    [data-theme="glass-dark"] .text-glow,
+  [data-theme="glass-dark"] .text-glow-green,
+  [data-theme="glass-dark"] .text-glow-yellow {
+    text-shadow: 0 1px 6px rgba(76, 194, 255, 0.28);
+  }
+
+  /* 樱花粉 v4：背景光斑微降透明度（让浮起的玻璃面板有"前景感"） */
+  [data-theme="sakura"] body {
+    background:
+      radial-gradient(ellipse at 15% 0%, rgba(249, 143, 194, 0.42) 0%, transparent 52%),
+      radial-gradient(ellipse at 88% 14%, rgba(255, 178, 214, 0.38) 0%, transparent 48%),
+      radial-gradient(ellipse at 50% 118%, rgba(233, 64, 133, 0.22) 0%, transparent 58%),
+      radial-gradient(ellipse at 0% 85%, rgba(241, 155, 192, 0.20) 0%, transparent 45%),
+      var(--c-bg-deep);
+  }
+
+  /* ================= 樱花粉 v4：液态玻璃 v2（v1.2.1 增强透明度 + 高光）=================
+     v3 → v4 调整：
+     - panel 背景透明度 0.74→0.42（更通透，背景樱粉光斑能透出来）
+     - backdrop-filter blur 26→32px（更模糊）
+     - 顶部镜面高光 1.5px→2px，颜色 0.95→0.99（更亮）
+     - 外阴影 0.16→0.24（面板"漂浮"感更强）
+     - 全部接入 --c-grad-card 变量（方便后续微调） */
+  [data-theme="sakura"] .btn-neon { border-radius: 999px; }
+  [data-theme="sakura"] .btn-ghost { border-radius: 999px; }
+  [data-theme="sakura"] .input-neon { border-radius: 14px; }
+  [data-theme="sakura"] .glass-panel {
+    border-radius: 20px;
+    background: var(--c-grad-card);
+    backdrop-filter: blur(32px) saturate(1.9) brightness(1.06);
+    -webkit-backdrop-filter: blur(32px) saturate(1.9) brightness(1.06);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-top-color: rgba(255, 255, 255, 0.98);
+    box-shadow:
+      0 14px 44px rgba(156, 34, 90, 0.24),
+      0 3px 12px rgba(233, 64, 133, 0.16),
+      inset 0 2px 0 rgba(255, 255, 255, 0.99),
+      inset 0 -1px 0 rgba(233, 64, 133, 0.10);
+  }
+  /* 侧栏 / 顶栏 v4：提高透明度（0.62→0.44）+ 加深高光 + 加底投影 */
+  [data-theme="sakura"] aside,
+  [data-theme="sakura"] header {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 236, 244, 0.34)) !important;
+    backdrop-filter: blur(28px) saturate(1.8);
+    -webkit-backdrop-filter: blur(28px) saturate(1.8);
+    box-shadow:
+      inset -1px 0 0 rgba(255, 255, 255, 0.65),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 4px 18px rgba(156, 34, 90, 0.12);
+  }
+  /* 按钮 v4：用渐变变量 + 加深边框 + 强化悬浮反馈 */
+  [data-theme="sakura"] .btn-neon {
+    background: var(--c-grad-button);
+    border: 1px solid rgba(233, 64, 133, 0.42);
+    color: #C22B78;
+    font-weight: 600;
+    box-shadow:
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.98),
+      0 4px 14px rgba(233, 64, 133, 0.16);
+    overflow: hidden;
+    transition: all 0.22s cubic-bezier(0.33, 1, 0.68, 1);
+  }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="sakura"] .btn-neon:hover {
+    background: var(--c-grad-button-hover);
+    border-color: rgba(233, 64, 133, 0.72);
+    color: var(--c-text-strong);
+    transform: translateY(-1.5px);
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 1),
+      0 10px 26px rgba(233, 64, 133, 0.32);
+  }
+}
+  /* 液态光泽带：hover 时斜扫而过 */
+  [data-theme="sakura"] .btn-neon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.85) 50%, transparent 58%);
+    transform: translateX(-130%);
+    transition: transform 0.65s ease;
+    pointer-events: none;
+  }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="sakura"] .btn-neon:hover::after { transform: translateX(130%); }
+}
+  [data-theme="sakura"] .btn-neon:active { transform: translateY(0) scale(0.97); }
+  /* ghost 按钮 hover 粉化 */
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="sakura"] .btn-ghost:hover {
+    background-color: rgba(233, 64, 133, 0.10);
+  }
+}
+  /* 输入框：白玻璃 + 内阴影 + 粉色 focus 光环 */
+  [data-theme="sakura"] .input-neon {
+    background: rgba(255, 255, 255, 0.74);
+    border: 1.5px solid rgba(233, 64, 133, 0.26);
+    color: #45202F;
+    box-shadow: inset 0 2px 6px rgba(233, 64, 133, 0.06);
+  }
+  [data-theme="sakura"] .input-neon:focus {
+    border-color: rgba(233, 64, 133, 0.78);
+    box-shadow: 0 0 0 3.5px rgba(233, 64, 133, 0.16), inset 0 2px 6px rgba(233, 64, 133, 0.05);
+  }
+  [data-theme="sakura"] .input-neon::placeholder {
+    color: #B57E98;
+  }
+  /* 数据胶囊 v4：边框 0.34→0.52 + 字重提到 600（多点对比锚点） */
+  [data-theme="sakura"] .data-pill {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.74);
+    border-color: rgba(233, 64, 133, 0.52);
+    font-weight: 600;
+    box-shadow:
+      inset 0 1.5px 0 rgba(255, 255, 255, 0.98),
+      0 3px 10px rgba(233, 64, 133, 0.18);
+  }
+  /* 侧栏导航选中项 v4：加深 + 左侧 3px 粉条锚点（强对比信号） */
+  [data-theme="sakura"] aside nav a {
+    border-radius: 12px;
+  }
+  [data-theme="sakura"] aside nav a.bg-ink-900\/80,
+  [data-theme="sakura"] aside nav a[class*="bg-neon-green"] {
+    background: rgba(255, 255, 255, 0.84) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 3px 0 0 #E94085,
+      0 6px 18px rgba(233, 64, 133, 0.28);
+    border: 1px solid rgba(233, 64, 133, 0.42);
+    color: var(--c-text-strong);
+  }
+  /* 全局 focus 光环换粉 */
+  [data-theme="sakura"] *:focus-visible {
+    outline: 2px solid rgba(233, 64, 133, 0.65);
+    outline-offset: 2px;
+  }
+  /* 滚动条加粉 */
+  [data-theme="sakura"] *::-webkit-scrollbar-track { background: rgba(233, 64, 133, 0.06); }
+  [data-theme="sakura"] *::-webkit-scrollbar-thumb {
+    background: rgba(233, 64, 133, 0.42);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+@media (hover: hover) and (pointer: fine) {
+  [data-theme="sakura"] *::-webkit-scrollbar-thumb:hover { background: rgba(233, 64, 133, 0.68); }
+}
+  [data-theme="sakura"] .data-pill { border-radius: 999px; }
+  /* 荧光文字光晕在浅底上会发灰，收敛为淡淡的粉晕 */
+  [data-theme="sakura"] .text-glow {
+    text-shadow: 0 1px 6px rgba(236, 110, 166, 0.25);
+  }
+  [data-theme="sakura"] .text-glow-green {
+    text-shadow: 0 1px 6px rgba(236, 110, 166, 0.25);
+  }
+  [data-theme="sakura"] .text-glow-yellow {
+    text-shadow: 0 1px 6px rgba(199, 122, 0, 0.25);
+  }
+
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: rgb(var(--c-primary-rgb) / 0.04); }
+  *::-webkit-scrollbar-thumb { background: rgb(var(--c-primary-rgb) / 0.30); border-radius: 4px; }
+@media (hover: hover) and (pointer: fine) {
+  *::-webkit-scrollbar-thumb:hover { background: rgb(var(--c-primary-rgb) / 0.60); }
+}
+
+  ::selection { background: rgb(var(--c-primary-rgb) / 0.40); color: #fff; }
+  /* 浅底主题下白字不可读，换深梅色 */
+  [data-theme="sakura"] ::selection { background: rgb(var(--c-primary-rgb) / 0.25); color: #5C2B40; }
+}
+
+@layer components {
+  /* 荧光边框按钮 */
+  .btn-neon {
+    @apply relative inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md
+           bg-ink-900/80 border text-neon-green
+           font-mono text-sm uppercase tracking-wider
+           transition-colors duration-200
+           hover:bg-neon-green/10 hover:border-neon-green
+           hover:shadow-neon-green
+           active:scale-95;
+    border-color: rgb(var(--c-primary-rgb) / 0.4);
+  }
+@media (hover: hover) and (pointer: fine) {
+  .btn-neon:hover {
+    background-color: rgb(var(--c-primary-rgb) / 0.10);
+  }
+}
+  .btn-neon-yellow {
+    /* 黄色是「更新提示」专用色，不随主题切换 */
+    @apply border-neon-yellow/40 text-neon-yellow
+           hover:bg-neon-yellow/10 hover:border-neon-yellow
+           hover:shadow-neon-yellow;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 rounded-md
+           text-text-secondary hover:text-neon-green hover:bg-neon-green/5
+           transition-colors duration-150 text-sm;
+  }
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover {
+    background-color: rgb(var(--c-primary-rgb) / 0.05);
+  }
+}
+
+  /* 玻璃拟态卡片 */
+  .glass-panel {
+    @apply bg-ink-900/70 backdrop-blur-md border rounded-lg shadow-glass;
+    border-color: rgb(var(--c-primary-rgb) / 0.15);
+  }
+
+  /* 输入框 */
+  .input-neon {
+    @apply w-full px-3 py-2 rounded-md
+           bg-ink-base/60 border
+           text-text-primary placeholder-text-dim
+           font-mono text-sm
+           focus:outline-none focus:border-neon-green focus:shadow-neon-green
+           transition-colors duration-150;
+    border-color: rgb(var(--c-primary-rgb) / 0.30);
+  }
+  .input-neon:focus {
+    border-color: rgb(var(--c-primary-rgb) / 1);
+  }
+
+  /* 标题小标签 */
+  .label-tag {
+    @apply font-mono text-[10px] uppercase tracking-[0.2em];
+    color: rgb(var(--c-primary-rgb) / 0.7);
+  }
+
+  /* 数据胶囊 */
+  .data-pill {
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded
+           bg-ink-base/60 border font-mono text-xs;
+    border-color: rgb(var(--c-primary-rgb) / 0.30);
+    color: rgb(var(--c-primary-rgb) / 1);
+  }
+
+  /* 状态点 */
+  .status-dot {
+    @apply inline-block w-2 h-2 rounded-full;
+  }
+}
+
+@layer utilities {
+  /* 扫描线叠加层 */
+  .scanline::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, rgb(var(--c-primary-rgb) / 0.03) 50%, transparent 100%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    animation: scanLine 8s linear infinite;
+  }
+
+  /* 文字荧光（跟随主题） */
+  .text-glow {
+    text-shadow: 0 0 8px rgb(var(--c-primary-rgb) / 0.6), 0 0 16px rgb(var(--c-primary-rgb) / 0.3);
+  }
+  /* 兼容老用法 */
+  .text-glow-green {
+    text-shadow: 0 0 8px rgba(0,255,136,0.6), 0 0 16px rgba(0,255,136,0.3);
+  }
+  .text-glow-yellow {
+    text-shadow: 0 0 8px rgba(255,234,0,0.6), 0 0 16px rgba(255,234,0,0.3);
+  }
+
+  /* 进度条 */
+  .progress-bar {
+    @apply h-1 bg-ink-700 rounded-full overflow-hidden;
+  }
+  .progress-bar > div {
+    @apply h-full bg-gradient-to-r from-neon-green to-neon-green-bright
+           shadow-neon-green transition-all duration-500;
+  }
+
+  /* v1.2.1 樱花粉主题：标题渐变文字（变量在 [data-theme="sakura"] 下；其他主题用 fallback 降级） */
+  .text-grad-sakura {
+    background: var(--c-grad-title, linear-gradient(90deg, #C22B78, #E94085, #F98FC2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  /* 分割线渐变 */
+  .divider-grad-sakura {
+    height: 1px;
+    background: var(--c-grad-divider, linear-gradient(90deg, transparent, rgba(233,64,133,0.42), transparent));
+    border: 0;
+    margin: 0.75rem 0;
+  }
+  /* 状态条：左侧粉条锚点 */
+  .status-bar-sakura {
+    position: relative;
+    padding-left: 0.75rem;
+  }
+  .status-bar-sakura::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6%;
+    bottom: 6%;
+    width: 3px;
+    background: var(--c-grad-status, linear-gradient(180deg, #E94085, rgba(233,64,133,0)));
+    border-radius: 2px;
+  }
+
+  /* v1.2.8 块 N/P：统一动画类（替代 framer-motion，0 依赖） */
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateX(20px) scale(0.96); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  .animate-toast-in { animation: toast-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  @keyframes panel-spring {
+    from { opacity: 0; transform: scale(0.96) translateY(6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .animate-panel-spring { animation: panel-spring 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+  @keyframes digit-bounce {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.12) translateY(-2px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+  .animate-digit-bounce { animation: digit-bounce 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+  @keyframes scanLine { from { background-position: 0 0; } to { background-position: 0 100%; } }
+
+  /* 统一缓动（cubic-bezier 简写） */
+  .ease-spring { transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+}
+
+/* v1.2.10：全局缓动令牌（tailwind.config.js 的动画与组件都通过 var() 引用，风格统一） */
+:root {
+  /* 快起慢收 —— OKX 官网那种"轻盈地落到位"的手感 */
+  --ease-expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* v1.2.10：animate-in 以前是个「到处在用但没人定义」的空类（等于没有动画），这里补齐 */
+@keyframes anim-in {
+  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.animate-in { animation: anim-in 180ms var(--ease-expo-out) both; }
+
+/* 卡片/列表逐项入场（stagger）：配合 style 里的 animation-delay 用 */
+@keyframes stagger-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.animate-stagger { animation: stagger-in 420ms var(--ease-expo-out) both; }
+
+/* 尊重系统「减少动态效果」设置，同时也让低端机更流畅 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================================
+ * v2.3 交互手感补丁（2026-10-29）
+ * 把「卡手」拆成可度量的四件事：
+ *  1) animate-page-in 从来没定义过 → 切页其实是硬切（还白付了整棵重挂载）
+ *  2) 触摸设备上的 backdrop-filter → Android WebView 每帧重算卷积，滚动掉帧
+ *  3) 滚动容器缺 touch-action → 斜向滑动先竖后横，手感发黏
+ *  4) 横向滚动没有 overscroll 隔离 → 拖到边缘整页回弹
+ * ========================================================================== */
+
+/* 1) 切页 / 弹层入场：只用 transform/opacity，不触发布局。
+      注意：animate-fade-in、animate-panel-in 之前也**从未定义**（Modal 一直在硬切）。 */
+@keyframes page-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.animate-page-in { animation: page-in 240ms var(--ease-expo-out) both; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in { animation: fade-in 160ms var(--ease-expo-out) both; }
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.98); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.animate-panel-in { animation: panel-in 220ms var(--ease-expo-out) both; }
+
+/* 2) 触摸设备：玻璃面板改成近实色、去掉模糊 */
+@media (hover: none), (pointer: coarse) {
+  .glass-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgb(var(--c-ink-900-rgb, 10 15 13) / 0.94);
+  }
+  .backdrop-blur-md, .backdrop-blur-sm, .backdrop-blur, .backdrop-blur-lg {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* 3) 滚动容器：显式声明手势方向，避免斜滑时方向来回抢 */
+.overflow-y-auto, .overflow-y-scroll { touch-action: pan-y; }
+.overflow-x-auto, .overflow-x-scroll { touch-action: pan-x; }
+.overflow-auto { touch-action: pan-y pan-x; }
+
+/* 4) 横向滚动也不要链到整页 */
+.overflow-x-auto, .overflow-x-scroll {
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: contain;
+}
+
+/* 5) 统一点按反馈：按下微缩、抬起回弹（比纯色变跟手） */
+.tap-scale { transition: transform 120ms var(--ease-expo-out); }
+.tap-scale:active { transform: scale(0.97); }
+
+/* 6) 弹层打开时锁背景滚动（Modal / SearchPalette 共用） */
+body.modal-open { overflow: hidden; touch-action: none; }
+
+/* 7) 避免滚动锚定导致内容「跳一下」 */
+.scroll-anchor-none { overflow-anchor: none; }

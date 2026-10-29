@@ -1,0 +1,353 @@
+/**
+ * 贝壳课表：USTB SSO 扫码登录 + BYYT 教务课表一键导入
+ * （原在小程序中心，v1.2.3 迁到课程页；小程序中心同步移除）
+ */
+import { useEffect, useRef, useState } from 'react';
+import { Shell, QrCode, RefreshCw, LogOut, Eye } from 'lucide-react';
+import dayjs from 'dayjs';
+import { useStore } from '@/store';
+import Modal from '@/components/Modal';
+import { guessSemesterStart } from '@/core/semester';
+
+interface UstbItem {
+  day: number;
+  period: number;
+  className: string;
+  teacher: string;
+  weeksText: string;
+  location: string;
+  periodName: string;
+}
+
+const USTB_TERMS = [
+  { value: '2026-2027-1', label: '2026-2027 秋学期', xn: '2026-2027', xq: '1' },
+  { value: '2026-2027-2', label: '2026-2027 春学期', xn: '2026-2027', xq: '2' },
+  { value: '2025-2026-2', label: '2025-2026 春学期', xn: '2025-2026', xq: '2' },
+  { value: '2025-2026-1', label: '2025-2026 秋学期', xn: '2025-2026', xq: '1' },
+];
+
+const WEEKDAY_NAMES = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+export default function BeikeTimetable() {
+  const refreshAll = useStore((s) => s.refreshAll);
+  const settings = useStore((s) => s.settings);
+  const [status, setStatus] = useState<{ loggedIn: boolean; user: { name: string; school: string; userId: string } | null; lastSync: number | null; importedCount: number } | null>(null);
+  const [term, setTerm] = useState('2026-2027-1');
+  // 第 1 周周一：按校历规则自动推断（秋=9 月首个周一 / 春=3 月首个周一），可手动改
+  const [semStart, setSemStart] = useState(() => dayjs(guessSemesterStart('2026-2027', '1')).format('YYYY-MM-DD'));
+  const [qr, setQr] = useState<{ sessionId: string; image: string } | null>(null);
+  const [qrState, setQrState] = useState<'loading' | 'waiting' | 'scanned' | 'expired' | 'error'>('loading');
+  const [qrError, setQrError] = useState('');
+  const [items, setItems] = useState<UstbItem[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const loadStatus = async () => setStatus(await window.taskAPI.ustb.status());
+
+  useEffect(() => {
+    loadStatus();
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  // 切换学期时自动重算第 1 周周一（以前默认成「今天」，导致整张课表日期错位）
+  useEffect(() => {
+    const t = USTB_TERMS.find((x) => x.value === term);
+    if (!t) return;
+    setSemStart(dayjs(guessSemesterStart(t.xn, t.xq)).format('YYYY-MM-DD'));
+  }, [term]);
+
+  const stopPoll = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  const startQr = async () => {
+    setQrError('');
+    setQrState('loading');
+    setMsg(null);
+    // v1.2.22：**先开弹窗**再发请求。以前是「拿到二维码才开弹窗」，而错误只显示在弹窗
+    // 内部 —— 于是 qrStart 一失败（校园网/SSO 报错/CORS/通道异常），弹窗永远不打开，
+    // 错误被关在看不见的地方，用户看到的只是「点了没反应的死按钮」（实机反馈）。
+    // 现在点开就有反馈：生成中 → 二维码 / 或具体失败原因（带 HTTP 状态与地址）。
+    setQr({ sessionId: '', image: '' });
+    try {
+      const r: any = await window.taskAPI.ustb.qrStart();
+      // ⚠ 必须检查 ok：底层失败时返回 {ok:false, error}，以前当成成功继续拿空
+      // sessionId 去轮询，于是永远只看到「会话不存在」，真实原因（网络/SSO）被盖掉。
+      if (!r?.ok || !r?.sessionId || !r?.qrImage) {
+        const detail = r?.error || '二维码生成失败（未返回会议/会话信息）';
+        setQrState('error');
+        setQrError(detail);
+        setQr(null);
+        setMsg({ kind: 'err', text: `扫码登录失败：${detail}` });
+        return;
+      }
+      setQr({ sessionId: r.sessionId, image: r.qrImage });
+      setQrState('waiting');
+      stopPoll();
+      pollRef.current = setInterval(async () => {
+        try {
+          const p = await window.taskAPI.ustb.qrPoll(r.sessionId);
+          if (p.status === 'waiting') setQrState('waiting');
+          else if (p.status === 'scanned') setQrState('scanned');
+          else if (p.status === 'expired') {
+            setQrState('expired');
+            stopPoll();
+          } else if (p.status === 'error') {
+            setQrState('error');
+            setQrError(p.message ?? '轮询出错');
+            stopPoll();
+          } else if (p.status === 'success') {
+            stopPoll();
+            setQr(null);
+            await loadStatus();
+            setMsg({ kind: 'ok', text: `登录成功：${p.user?.name ?? ''}${p.user?.school ? ` · ${p.user.school}` : ''}` });
+          }
+        } catch (err: any) {
+          setQrState('error');
+          setQrError(err?.message ?? String(err));
+          stopPoll();
+        }
+      }, 2000);
+    } catch (err: any) {
+      const detail = err?.message ?? String(err);
+      setQrState('error');
+      setQrError(detail);
+      // 「请求冲突」等文案是 USTB SSO 自己的返回（我们代码里没有这些字）。
+      // 最常见真因：手机不在校园网 —— SSO 网关在校外会返回业务错误而不是超时，
+      // 错误文本对用户毫无指向性，所以补一句可执行的提示。
+      const hint = /请求冲突|冲突|timeout|超时|ETIMEDOUT|ENOTFOUND|NetworkError|Failed to fetch/i.test(detail)
+        ? '（贝壳课表需要校园网环境：请确认手机已连接校园 WiFi 后重试）'
+        : '';
+      // 落诊断日志：用户可从「设置 → 输入诊断 → 导出日志」把这段发给我们，
+      // 否则 WebView 的 console 在手机上根本拿不到（webview console 不落盘）。
+      try {
+        window.taskAPI.diag.append({
+          kind: 'beike-qr', at: Date.now(), detail, hint,
+          ua: navigator.userAgent, mobile: !!(window as any).__MOBILE__,
+        });
+      } catch { /* 诊断通道不可用就算了 */ }
+      // 弹窗关掉后原因也不能丢：顶部再挂一条（同 Settings 的 msg 样式）
+      setMsg({ kind: 'err', text: `扫码登录失败：${detail}${hint}` });
+    }
+  };
+
+  const closeQr = () => {
+    if (qr) window.taskAPI.ustb.qrCancel(qr.sessionId).catch(() => {});
+    stopPoll();
+    setQr(null);
+  };
+
+  const termInfo = () => USTB_TERMS.find((t) => t.value === term)!;
+
+  const doPreview = async () => {
+    const t = termInfo();
+    setBusy('preview');
+    setMsg(null);
+    try {
+      const r = await window.taskAPI.ustb.preview({ xn: t.xn, xq: t.xq });
+      setItems(r.items);
+      setMsg({ kind: 'ok', text: `已获取 ${r.items.length} 条课程记录（${r.user?.name ?? ''}）` });
+    } catch (e: any) {
+      setMsg({ kind: 'err', text: e?.message ?? String(e) });
+    }
+    setBusy(null);
+  };
+
+  /** 周次校正：整学期平移 ±1 周，修正「和学校校历差一周」 */
+  const shiftWeek = async (w: number) => {
+    setBusy('shift');
+    setMsg(null);
+    try {
+      const r = await window.taskAPI.ustb.shiftWeek(w);
+      await refreshAll();
+      setMsg({ kind: 'ok', text: `已整体平移 ${w > 0 ? '+' : ''}${w} 周（${r.shifted} 条上课时间）` });
+    } catch (e: any) {
+      setMsg({ kind: 'err', text: e?.message ?? String(e) });
+    }
+    setBusy(null);
+  };
+
+  const doSync = async () => {
+    const t = termInfo();
+    if (!semStart) {
+      setMsg({ kind: 'err', text: '请先设置第 1 周周一的日期' });
+      return;
+    }
+    if (!confirm(`同步 ${t.label} 课表？\n\n· 之前导入的贝壳课表数据会被替换\n· 手动添加的课程和日程不受影响`)) return;
+    setBusy('sync');
+    setMsg(null);
+    try {
+      const r = await window.taskAPI.ustb.import({ xn: t.xn, xq: t.xq, semesterStart: dayjs(semStart).valueOf() });
+      await refreshAll();
+      setItems(null);
+      await loadStatus();
+      setMsg({
+        kind: 'ok',
+        text: `同步完成：${r.courses} 门课程 · ${r.events} 个上课时间${r.warnings?.length ? `（注意：${r.warnings[0]}）` : ''}`,
+      });
+    } catch (e: any) {
+      setMsg({ kind: 'err', text: e?.message ?? String(e) });
+    }
+    setBusy(null);
+  };
+
+  const doLogout = async () => {
+    if (!confirm('退出贝壳课表登录？\n（已导入的课表数据会保留）')) return;
+    await window.taskAPI.ustb.logout();
+    setItems(null);
+    setMsg(null);
+    await loadStatus();
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 pb-3 border-b border-neon-green/10">
+        <Shell size={16} className="text-neon-green" />
+        <h3 className="label-tag">贝壳课表 · USTB 教务同步</h3>
+        <span className="ml-auto text-[10px] font-mono text-text-dim">
+          {status?.loggedIn
+            ? `已登录${status.user?.name ? ` · ${status.user.name}` : ''}${status.lastSync ? ` · 上次同步 ${dayjs(status.lastSync).format('MM-DD HH:mm')}` : ''}`
+            : '未登录'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3 items-end">
+        <div>
+          <label className="text-[10px] font-mono text-text-dim">学期</label>
+          <select value={term} onChange={(e) => setTerm(e.target.value)} className="input-neon text-xs py-1.5 w-full">
+            {USTB_TERMS.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] font-mono text-text-dim">第 1 周周一（已按校历自动推断）</label>
+          <input type="date" value={semStart} onChange={(e) => setSemStart(e.target.value)} className="input-neon text-xs py-1.5 w-full" />
+          <div className="text-[9px] font-mono text-text-dim mt-0.5">
+            秋季=9 月首个周一 · 春季=3 月首个周一；与学校实际校历不符时手动改
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {!status?.loggedIn ? (
+            <button onClick={startQr} disabled={busy === 'sync'} className="btn-neon text-xs py-1.5 flex-1 flex items-center justify-center gap-1 disabled:opacity-40">
+              <QrCode size={14} /> 扫码登录
+            </button>
+          ) : (
+            <>
+              <button onClick={doPreview} disabled={!!busy} className="btn-ghost text-xs py-1.5 flex items-center gap-1 disabled:opacity-40">
+                <Eye size={14} /> 预览
+              </button>
+              <button onClick={doSync} disabled={!!busy} className="btn-neon text-xs py-1.5 flex-1 flex items-center justify-center gap-1 disabled:opacity-40">
+                <RefreshCw size={14} className={busy === 'sync' ? 'animate-spin' : ''} /> 同步课表
+              </button>
+            </>
+          )}
+        </div>
+        {status?.loggedIn && (
+          <button onClick={doLogout} className="btn-ghost text-xs py-1.5 text-text-dim hover:text-neon-danger flex items-center justify-center gap-1">
+            <LogOut size={12} /> 退出登录
+          </button>
+        )}
+
+        {/* 周次校正：自动推断的开学日与校历差一周时，一键对齐（不必重新导入） */}
+        {status?.loggedIn && (
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <span className="text-[10px] font-mono text-text-dim shrink-0">课表整体偏了？</span>
+            <button onClick={() => shiftWeek(-1)} disabled={!!busy} className="btn-ghost text-[11px] py-0.5 px-2 disabled:opacity-40">−1 周</button>
+            <button onClick={() => shiftWeek(1)} disabled={!!busy} className="btn-ghost text-[11px] py-0.5 px-2 disabled:opacity-40">+1 周</button>
+            <span className="text-[9px] font-mono text-text-dim/70">只平移教务导入的课程，手动日程不动</span>
+          </div>
+        )}
+      </div>
+
+      {msg && (
+        <div className={`mt-3 text-xs font-mono px-3 py-2 rounded border ${msg.kind === 'ok' ? 'border-neon-green/30 text-neon-green bg-neon-green/5' : 'border-neon-danger/40 text-neon-danger bg-neon-danger/5'}`}>
+          {msg.text}
+        </div>
+      )}
+
+      {items && (
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-xs font-mono">
+            <thead>
+              <tr className="text-text-dim text-[10px] border-b border-neon-green/10">
+                <th className="text-left py-1.5 pr-3">课程</th>
+                <th className="text-left py-1.5 pr-3">教师</th>
+                <th className="text-left py-1.5 pr-3">时间</th>
+                <th className="text-left py-1.5 pr-3">周次</th>
+                <th className="text-left py-1.5">地点</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...items]
+                .sort((a, b) => a.day - b.day || a.period - b.period)
+                .map((it, i) => (
+                  <tr key={i} className="border-b border-neon-green/5 hover:bg-neon-green/5">
+                    <td className="py-1.5 pr-3 text-text-primary font-bold">{it.className.replace(/\n/g, ' ')}</td>
+                    <td className="py-1.5 pr-3 text-text-secondary">{it.teacher || '-'}</td>
+                    <td className="py-1.5 pr-3 text-neon-green">{WEEKDAY_NAMES[it.day - 1] ?? it.day} · {it.periodName || `第${it.period}大节`}</td>
+                    <td className="py-1.5 pr-3 text-neon-yellow">{it.weeksText || '-'}</td>
+                    <td className="py-1.5 text-text-secondary">{it.location || '-'}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!status?.loggedIn && !msg && (
+        <p className="mt-3 text-[10px] font-mono text-text-dim">
+          使用北科大统一身份认证微信扫码登录，自动拉取教务课表并生成课程卡片 + 日历上课时间。需在校园网环境下使用。
+        </p>
+      )}
+
+      {/* 扫码登录弹窗 */}
+      {qr && (
+        <Modal title="微信扫码登录 · 北科大统一身份认证" onClose={closeQr}>
+          <div className="flex flex-col items-center gap-4">
+            {/* 图片为空说明还在生成（此时显示占位而不是破图） */}
+            {qr.image ? (
+              <div className="p-3 bg-white rounded-lg">
+                <img src={qr.image} alt="登录二维码" className="w-56 h-56" />
+              </div>
+            ) : qrState === 'error' ? null : (
+              <div className="w-56 h-56 rounded-lg border border-neon-green/20 grid place-items-center text-xs font-mono text-text-dim">
+                正在生成二维码…
+              </div>
+            )}
+            <div className="text-xs font-mono text-center">
+              {qrState === 'loading' && <span className="text-text-dim">正在生成二维码…</span>}
+              {qrState === 'waiting' && <span className="text-neon-green">请使用微信扫描二维码</span>}
+              {/* v1.2.20：手机上没法用另一台设备扫自己的屏幕 —— 但微信「扫一扫」支持
+                  从相册选图识别二维码，所以流程是：长按保存这张二维码 → 微信扫一扫 →
+                  相册选取 → 在本机确认登录。登录态由下面已有的轮询接上，无需改动。 */}
+              {qrState === 'waiting' && typeof window !== 'undefined' && !!(window as any).__MOBILE__ && (
+                <div className="mt-2 p-2 rounded border border-neon-yellow/30 bg-neon-yellow/10 text-neon-yellow text-left leading-relaxed">
+                  手机上这样操作：长按上面的二维码「保存到相册」→ 打开微信「扫一扫」→
+                  点右下角「相册」选这张图 → 在本机确认登录，此窗口会自动继续。
+                </div>
+              )}
+              {qrState === 'scanned' && <span className="text-neon-yellow">已扫码，请在手机上确认登录</span>}
+              {qrState === 'expired' && <span className="text-neon-danger">二维码已过期</span>}
+              {qrState === 'error' && <span className="text-neon-danger">{qrError || '出错了'}</span>}
+            </div>
+            {(qrState === 'expired' || qrState === 'error') && (
+              <button onClick={startQr} className="btn-neon text-xs py-1.5 flex items-center gap-1">
+                <RefreshCw size={12} /> 刷新二维码
+              </button>
+            )}
+            <p className="text-[10px] font-mono text-text-dim text-center">
+              扫码确认后 StarTasks 会自动完成登录并保存登录态（仅存本机），下次同步无需重复扫码。
+            </p>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
