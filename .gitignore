@@ -34,6 +34,9 @@ HTML/build-win.log
 # IDE/助手本地状态
 .codebuddy/
 
+# 遗留目录快照（脚本产物，体积不可控）
+_legacy-untracked-backup.zip
+
 # ==================== 构建产物 ====================
 dist/
 dist-electron/
